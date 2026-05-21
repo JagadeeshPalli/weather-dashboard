@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { KeyRound, ExternalLink, X } from 'lucide-react'
 import { FloatingNav } from './components/FloatingNav'
 import { SearchBar } from './components/SearchBar'
 import { WeatherHero } from './components/WeatherHero'
@@ -7,13 +8,59 @@ import { WeatherDetails } from './components/WeatherDetails'
 import { SkeletonHero, SkeletonDetails } from './components/SkeletonCard'
 import { ErrorState } from './components/ErrorState'
 import { useWeatherData } from './hooks/useWeatherData'
+import { hasApiKey } from './services/weatherApi'
 import type { UnitSystem } from './types/weather'
+
+function ApiKeyBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.3 }}
+      className="w-full max-w-xl glass-card border-[rgba(245,158,11,0.3)] bg-[rgba(245,158,11,0.06)]"
+    >
+      <div className="flex items-start gap-3">
+        <KeyRound className="w-4 h-4 text-[#F59E0B] mt-0.5 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="font-sans text-sm font-medium text-[#F1F5F9]">API key not configured</p>
+          <p className="font-sans text-xs text-[#94A3B8] mt-1 leading-relaxed">
+            Create a <span className="font-code text-[#F59E0B]">.env</span> file in the project
+            root and add your key:
+          </p>
+          <div className="mt-2 px-3 py-2 rounded-lg bg-[rgba(0,0,0,0.4)] font-code text-xs text-[#F59E0B] select-all">
+            VITE_OPENWEATHERMAP_API_KEY=your_key_here
+          </div>
+          <a
+            href="https://openweathermap.org/api"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 mt-2 font-sans text-xs text-[#3B82F6] hover:underline"
+          >
+            Get a free key at openweathermap.org
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+        <button
+          onClick={onDismiss}
+          className="text-[#94A3B8] hover:text-[#F1F5F9] transition-colors shrink-0"
+          aria-label="Dismiss"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </motion.div>
+  )
+}
 
 function App() {
   const [unit, setUnit] = useState<'C' | 'F'>('C')
+  const [bannerDismissed, setBannerDismissed] = useState(false)
   const unitSystem: UnitSystem = unit === 'C' ? 'metric' : 'imperial'
   const { current, loading, error, load } = useWeatherData(unitSystem)
   const lastCoordsRef = useRef<{ lat: number; lon: number } | null>(null)
+
+  const showBanner = !hasApiKey() && !bannerDismissed
 
   const handleLocationSelect = useCallback(
     (lat: number, lon: number, _cityName: string) => {
@@ -23,7 +70,7 @@ function App() {
     [load]
   )
 
-  // Re-fetch with new unit whenever unitSystem changes
+  // Re-fetch with new unit whenever load reference changes (unit changed)
   useEffect(() => {
     if (lastCoordsRef.current) {
       load(lastCoordsRef.current.lat, lastCoordsRef.current.lon)
@@ -51,9 +98,9 @@ function App() {
       <FloatingNav unit={unit} onUnitToggle={() => setUnit((u) => (u === 'C' ? 'F' : 'C'))} />
 
       <main className="relative z-10 pt-28 px-4 pb-12 max-w-4xl mx-auto">
-        <div className="flex flex-col items-center gap-8">
+        <div className="flex flex-col items-center gap-6">
 
-          {/* Hero search header */}
+          {/* Title + search */}
           <motion.div
             className="w-full flex flex-col items-center gap-4"
             initial={{ opacity: 0, y: -12 }}
@@ -70,6 +117,13 @@ function App() {
             </div>
             <SearchBar onSelect={handleLocationSelect} />
           </motion.div>
+
+          {/* API key setup banner */}
+          <AnimatePresence>
+            {showBanner && (
+              <ApiKeyBanner onDismiss={() => setBannerDismissed(true)} />
+            )}
+          </AnimatePresence>
 
           {/* Content area */}
           <div className="w-full flex flex-col gap-4">
@@ -98,7 +152,7 @@ function App() {
               </>
             )}
 
-            {!loading && !error && !current && (
+            {!loading && !error && !current && !showBanner && (
               <motion.div
                 className="text-center py-20"
                 initial={{ opacity: 0 }}
