@@ -9,6 +9,8 @@ import { SkeletonHero, SkeletonDetails } from './components/SkeletonCard'
 import { ErrorState } from './components/ErrorState'
 import { useWeatherData } from './hooks/useWeatherData'
 import { hasApiKey } from './services/weatherApi'
+import { HourlyChart } from './components/HourlyChart'
+import { ForecastGrid } from './components/ForecastGrid'
 import type { UnitSystem } from './types/weather'
 
 function ApiKeyBanner({ onDismiss }: { onDismiss: () => void }) {
@@ -57,7 +59,7 @@ function App() {
   const [unit, setUnit] = useState<'C' | 'F'>('C')
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const unitSystem: UnitSystem = unit === 'C' ? 'metric' : 'imperial'
-  const { current, loading, error, load } = useWeatherData(unitSystem)
+  const { current, forecast, loading, error, load } = useWeatherData(unitSystem)
   const lastCoordsRef = useRef<{ lat: number; lon: number } | null>(null)
 
   const showBanner = !hasApiKey() && !bannerDismissed
@@ -149,6 +151,12 @@ function App() {
               <>
                 <WeatherHero data={current} unit={unit} />
                 <WeatherDetails data={current} unit={unit} />
+                {forecast && (
+                  <>
+                    <HourlyChart items={forecast.list} unit={unit} />
+                    <ForecastGrid items={forecast.list} unit={unit} />
+                  </>
+                )}
               </>
             )}
 
