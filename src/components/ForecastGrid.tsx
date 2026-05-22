@@ -1,7 +1,8 @@
 import { memo, useMemo, useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { ArrowUp, ArrowDown } from 'lucide-react'
+import { ArrowUp, ArrowDown, Droplets } from 'lucide-react'
 import type { ForecastItem } from '../types/weather'
+import { TiltCard } from './TiltCard'
 
 interface ForecastGridProps {
   items: ForecastItem[]
@@ -67,38 +68,41 @@ const ForecastCard = memo(function ForecastCard({ day, unit, index }: ForecastCa
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      whileTap={{ scale: 0.97 }}
       transition={{ delay: index * 0.08, duration: 0.4, ease: 'easeOut' }}
-      className="glass-card flex flex-col items-center gap-2 text-center"
     >
-      <p className="font-code text-xs text-dim uppercase tracking-widest">{day.dayLabel}</p>
+      <TiltCard className="glass-card flex flex-col items-center gap-2 text-center">
+        <p className="font-code text-xs text-dim uppercase tracking-widest">{day.dayLabel}</p>
 
-      <img
-        src={iconUrl}
-        alt={day.description}
-        className="w-12 h-12 drop-shadow-md"
-        loading="lazy"
-      />
+        <img
+          src={iconUrl}
+          alt={day.description}
+          className="w-12 h-12 drop-shadow-md"
+          loading="lazy"
+        />
 
-      <p className="font-sans text-[10px] text-dim capitalize leading-tight">
-        {day.description}
-      </p>
+        <p className="font-sans text-[10px] text-dim capitalize leading-tight">
+          {day.description}
+        </p>
 
-      <div className="flex items-center gap-2 mt-1">
-        <span className="flex items-center gap-0.5 font-code text-sm font-semibold text-fg">
-          <ArrowUp className="w-3 h-3 text-[#3B82F6]" />
-          {day.tempMax}{sym}
-        </span>
-        <span className="flex items-center gap-0.5 font-code text-sm text-faint">
-          <ArrowDown className="w-3 h-3" />
-          {day.tempMin}{sym}
-        </span>
-      </div>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="flex items-center gap-0.5 font-code text-sm font-semibold text-fg">
+            <ArrowUp className="w-3 h-3 text-[#3B82F6]" />
+            {day.tempMax}{sym}
+          </span>
+          <span className="flex items-center gap-0.5 font-code text-sm text-faint">
+            <ArrowDown className="w-3 h-3" />
+            {day.tempMin}{sym}
+          </span>
+        </div>
 
-      {day.pop > 0 && (
-        <span className="font-code text-[10px] text-[#3B82F6]">
-          💧 {day.pop}%
-        </span>
-      )}
+        {day.pop > 0 && (
+          <span className="flex items-center gap-0.5 font-code text-[10px] text-[#3B82F6]">
+            <Droplets className="w-3 h-3" />
+            {day.pop}%
+          </span>
+        )}
+      </TiltCard>
     </motion.div>
   )
 })

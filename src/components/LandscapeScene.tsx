@@ -1,3 +1,17 @@
+/**
+ * LandscapeScene — atmospheric city-horizon scene at the bottom of the screen.
+ *
+ * Design philosophy:
+ *  - NO walking characters (they looked toyish at SVG precision)
+ *  - Three-layer depth: distant mountains → mid-city skyline → foreground road
+ *  - City skyline silhouette with window-light details in dark mode
+ *  - Condition-aware environment: birds (clear), puddles (rain), mist wisps,
+ *    snow shimmer on rooftops, lightning flicker for thunder
+ *  - Pure SVG + framer-motion, zero external deps
+ *
+ * ViewBox: 1440 × 200, ground strip at y ≈ 162–168
+ * Z-index: 2 (above WeatherBackground z=1, below cards z=10)
+ */
 import { useMemo } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 
@@ -6,7 +20,15 @@ interface LandscapeSceneProps {
   isDark: boolean
 }
 
-type SceneCondition = 'rain' | 'thunder' | 'drizzle' | 'snow' | 'clear' | 'cloudy' | 'mist' | 'default'
+type SceneCondition =
+  | 'rain'
+  | 'thunder'
+  | 'drizzle'
+  | 'snow'
+  | 'clear'
+  | 'cloudy'
+  | 'mist'
+  | 'default'
 
 function getSceneCondition(id: number): SceneCondition {
   if (id >= 200 && id < 300) return 'thunder'
@@ -19,450 +41,576 @@ function getSceneCondition(id: number): SceneCondition {
   return 'default'
 }
 
-/* Jacket colour per condition ─────────────────────────────────────────────── */
-const jacketColorMap: Record<SceneCondition, string> = {
-  clear:   '#10B981',
-  rain:    '#3B82F6',
-  drizzle: '#60A5FA',
-  thunder: '#6366F1',
-  snow:    '#F97316',
-  cloudy:  '#64748B',
-  mist:    '#94A3B8',
-  default: '#64748B',
+/* ─── City skyline profile ──────────────────────────────────────────────────
+   Each pair [x, y] is a corner of the stepped building silhouette.
+   The path goes left → right along the top profile, then closes at groundY.
+   Tallest landmark cluster is at x ≈ 520-570 (y ≈ 48).
+*/
+const NEAR_PROFILE: [number, number][] = [
+  [0, 158], [58, 158], [58, 140], [88, 140], [88, 122], [118, 122],
+  [118, 110], [145, 110], [145, 96], [164, 96], [164, 84], [194, 84],
+  [194, 96], [218, 96], [218, 112], [250, 112], [250, 98], [280, 98],
+  [280, 120], [312, 120], [312, 108], [352, 108], [352, 88], [382, 88],
+  [382, 72], [416, 72], [416, 60], [442, 60], [442, 72], [464, 72],
+  [464, 88], [496, 88], [496, 75], [526, 75], [526, 58], [549, 58],
+  [549, 48], [570, 48], [570, 58], [594, 58], [594, 75], [624, 75],
+  [624, 88], [656, 88], [656, 104], [690, 104], [690, 88], [724, 88],
+  [724, 76], [754, 76], [754, 92], [788, 92], [788, 106], [822, 106],
+  [822, 118], [857, 118], [857, 105], [890, 105], [890, 90], [924, 90],
+  [924, 75], [960, 75], [960, 90], [994, 90], [994, 105], [1028, 105],
+  [1028, 118], [1062, 118], [1062, 100], [1100, 100], [1100, 112],
+  [1140, 112], [1140, 126], [1180, 126], [1180, 115], [1218, 115],
+  [1218, 128], [1255, 128], [1255, 138], [1294, 138], [1294, 126],
+  [1332, 126], [1332, 140], [1372, 140], [1372, 150], [1412, 150],
+  [1412, 158], [1440, 158],
+]
+
+const FAR_PROFILE: [number, number][] = [
+  [0, 162], [72, 162], [72, 150], [108, 150], [108, 138], [145, 138],
+  [145, 148], [182, 148], [182, 135], [212, 135], [212, 148], [248, 148],
+  [248, 138], [285, 138], [285, 148], [322, 148], [322, 138], [358, 138],
+  [358, 125], [394, 125], [394, 138], [428, 138], [428, 125], [462, 125],
+  [462, 115], [494, 115], [494, 105], [522, 105], [522, 118], [552, 118],
+  [552, 108], [582, 108], [582, 98], [610, 98], [610, 110], [640, 110],
+  [640, 122], [670, 122], [670, 110], [702, 110], [702, 98], [732, 98],
+  [732, 110], [764, 110], [764, 122], [798, 122], [798, 132], [832, 132],
+  [832, 122], [866, 122], [866, 132], [900, 132], [900, 142], [935, 142],
+  [935, 132], [970, 132], [970, 142], [1008, 142], [1008, 150], [1048, 150],
+  [1048, 142], [1088, 142], [1088, 150], [1128, 150], [1128, 158],
+  [1168, 158], [1168, 150], [1208, 150], [1208, 158], [1440, 158],
+]
+
+/* Pre-computed window positions (golden-angle spread for even distribution) */
+const WINDOWS = Array.from({ length: 44 }, (_, i) => ({
+  x: Math.round((i * 137.508 + 22) % 1440),
+  y: Math.round(68 + (i * 53.7 + 9) % 82),
+  delay: (i * 0.38) % 5.6,
+  dur: 2.5 + (i % 7) * 0.48,
+  pulse: i % 3 === 0,
+  w: 4 + (i % 3),
+}))
+
+function profileToPath(pts: [number, number][], groundY: number): string {
+  return (
+    `M0,${groundY} ` +
+    pts.map(([x, y]) => `L${x},${y}`).join(' ') +
+    ` L1440,${groundY} Z`
+  )
 }
 
-/* ─── Ground / Hill SVG ────────────────────────────────────────────────────── */
+/* ─── Scene sky tint (adds warmth/coolness at the horizon) ──────────────── */
+const TINT: Record<SceneCondition, { dark: string; light: string }> = {
+  clear:   { dark: 'linear-gradient(to top, rgba(245,158,11,0.14) 0%, transparent 55%)',   light: 'linear-gradient(to top, rgba(253,186,116,0.32) 0%, transparent 55%)' },
+  rain:    { dark: 'linear-gradient(to top, rgba(30,64,138,0.22) 0%, transparent 55%)',    light: 'linear-gradient(to top, rgba(30,58,138,0.22) 0%, transparent 55%)' },
+  drizzle: { dark: 'linear-gradient(to top, rgba(30,58,138,0.18) 0%, transparent 55%)',   light: 'linear-gradient(to top, rgba(30,58,138,0.18) 0%, transparent 55%)' },
+  thunder: { dark: 'linear-gradient(to top, rgba(91,33,182,0.26) 0%, transparent 55%)',   light: 'linear-gradient(to top, rgba(91,33,182,0.20) 0%, transparent 55%)' },
+  snow:    { dark: 'linear-gradient(to top, rgba(186,230,253,0.18) 0%, transparent 55%)', light: 'linear-gradient(to top, rgba(186,230,253,0.34) 0%, transparent 55%)' },
+  mist:    { dark: 'linear-gradient(to top, rgba(100,116,139,0.20) 0%, transparent 55%)', light: 'linear-gradient(to top, rgba(148,163,184,0.28) 0%, transparent 55%)' },
+  cloudy:  { dark: 'linear-gradient(to top, rgba(51,65,85,0.24) 0%, transparent 55%)',    light: 'linear-gradient(to top, rgba(100,116,139,0.22) 0%, transparent 55%)' },
+  default: { dark: 'linear-gradient(to top, rgba(15,23,42,0.22) 0%, transparent 55%)',    light: 'linear-gradient(to top, rgba(100,116,139,0.18) 0%, transparent 55%)' },
+}
+
+/* ─── Mountains ─────────────────────────────────────────────────────────── */
+function MountainLayer({ isDark }: { isDark: boolean }) {
+  const farFill  = isDark ? 'rgba(14,20,42,0.48)' : 'rgba(40,90,60,0.28)'
+  const nearFill = isDark ? 'rgba(8,12,28,0.68)'  : 'rgba(24,62,42,0.48)'
+  return (
+    <svg
+      viewBox="0 0 1440 200"
+      preserveAspectRatio="none"
+      className="absolute inset-0 w-full h-full"
+      aria-hidden="true"
+    >
+      {/* Far range — slightly blurred, faded */}
+      <path
+        d="M-10,92 C80,60 180,80 278,54 C378,28 478,64 578,40
+           C678,16 778,56 878,32 C978,8 1078,46 1178,24
+           C1278,2 1368,30 1450,18 L1450,200 L-10,200 Z"
+        fill={farFill}
+        style={{ filter: 'blur(0.6px)' }}
+      />
+      {/* Near range */}
+      <path
+        d="M-10,112 C60,82 148,106 238,84 C328,62 415,96 505,72
+           C595,48 680,84 770,60 C860,36 946,74 1036,52
+           C1126,30 1212,64 1302,44 C1372,28 1416,44 1450,38
+           L1450,200 L-10,200 Z"
+        fill={nearFill}
+      />
+    </svg>
+  )
+}
+
+/* ─── City skyline silhouette + window lights ────────────────────────────── */
+function CityLayer({ isDark }: { isDark: boolean }) {
+  const farFill  = isDark ? 'rgba(6,10,22,0.60)'  : 'rgba(16,50,30,0.42)'
+  const nearFill = isDark ? 'rgba(4,7,16,0.90)'   : 'rgba(10,35,22,0.76)'
+  const nearPath = profileToPath(NEAR_PROFILE, 168)
+  const farPath  = profileToPath(FAR_PROFILE,  168)
+  const antCol   = isDark ? 'rgba(148,163,184,0.55)' : 'rgba(30,58,138,0.38)'
+
+  return (
+    <svg
+      viewBox="0 0 1440 200"
+      preserveAspectRatio="none"
+      className="absolute inset-0 w-full h-full"
+      aria-hidden="true"
+      overflow="visible"
+    >
+      {/* Tallest landmark antenna (x≈559, topY≈48) */}
+      <line x1="559" y1="48" x2="559" y2="28" stroke={antCol} strokeWidth="2.5" strokeLinecap="round" />
+      <motion.circle
+        cx="559" cy="27" r="2.5"
+        fill="rgba(239,68,68,0.72)"
+        animate={{ opacity: [0.72, 0.2, 0.72] }}
+        transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      {/* Secondary antenna (x≈429, topY≈60) */}
+      <line x1="429" y1="60" x2="429" y2="44" stroke={antCol} strokeWidth="1.8" strokeLinecap="round" />
+
+      {/* Far skyline */}
+      <path d={farPath} fill={farFill} />
+      {/* Near skyline */}
+      <path d={nearPath} fill={nearFill} />
+
+      {/* Window lights — dark mode only */}
+      {isDark && WINDOWS.map((w, i) =>
+        w.pulse ? (
+          <motion.rect
+            key={i}
+            x={w.x} y={w.y}
+            width={w.w} height={3.5}
+            rx="0.8"
+            fill="rgba(253,224,96,0.50)"
+            animate={{ opacity: [0.50, 0.78, 0.50] }}
+            transition={{ duration: w.dur, delay: w.delay, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        ) : (
+          <rect
+            key={i}
+            x={w.x} y={w.y}
+            width={w.w} height={3.5}
+            rx="0.8"
+            fill="rgba(253,224,96,0.38)"
+          />
+        ),
+      )}
+    </svg>
+  )
+}
+
+/* ─── Ground / road ─────────────────────────────────────────────────────── */
 function GroundLayer({ isDark }: { isDark: boolean }) {
-  const backFill  = isDark ? 'rgba(15,23,42,0.82)'  : 'rgba(34,100,50,0.60)'
-  const frontFill = isDark ? 'rgba(6,10,20,0.95)'   : 'rgba(19,74,38,0.84)'
+  const road = isDark ? 'rgba(22,32,52,0.92)' : 'rgba(88,104,122,0.60)'
+  const line = isDark ? 'rgba(248,213,69,0.28)' : 'rgba(248,213,69,0.52)'
+  const fore = isDark ? 'rgba(4,7,14,0.96)'   : 'rgba(14,52,28,0.88)'
   return (
-    <svg viewBox="0 0 1440 190" preserveAspectRatio="none"
-      className="absolute inset-0 w-full h-full" aria-hidden="true">
-      {/* back rolling hills */}
-      <path d="M0,88 C180,50 360,78 540,60 C720,42 900,70 1080,52 C1260,34 1380,60 1440,54 L1440,190 L0,190 Z"
-        fill={backFill} />
-      {/* front ground */}
-      <path d="M0,136 C120,120 280,146 440,134 C600,120 760,148 920,138 C1080,126 1260,146 1440,138 L1440,190 L0,190 Z"
-        fill={frontFill} />
+    <svg
+      viewBox="0 0 1440 200"
+      preserveAspectRatio="none"
+      className="absolute inset-0 w-full h-full"
+      aria-hidden="true"
+    >
+      <path
+        d="M0,164 C240,160 560,163 800,160 C1040,157 1280,161 1440,158
+           L1440,175 C1280,172 1040,171 800,173 C560,175 240,173 0,175 Z"
+        fill={road}
+      />
+      {Array.from({ length: 13 }, (_, i) => (
+        <rect key={i} x={i * 112 + 8} y="166.5" width="70" height="2.5" rx="1.2" fill={line} />
+      ))}
+      <path
+        d="M0,175 C160,169 340,179 520,171 C700,163 880,179 1060,171
+           C1240,163 1360,176 1440,171 L1440,200 L0,200 Z"
+        fill={fore}
+      />
     </svg>
   )
 }
 
-/* ─── House silhouette (background depth) ──────────────────────────────────── */
-function HouseSilhouette({ isDark }: { isDark: boolean }) {
-  const fill = isDark ? 'rgba(12,18,36,0.78)' : 'rgba(28,64,40,0.55)'
+/* ─── Tree layer ────────────────────────────────────────────────────────── */
+function PineTree({ fill, h = 50 }: { fill: string; h?: number }) {
+  const w = h * 0.54
   return (
-    <div style={{ position: 'absolute', right: '16%', bottom: 92 }}>
-      <svg width="72" height="66" viewBox="0 0 72 66" aria-hidden="true">
-        {/* roof */}
-        <polygon points="0,30 36,0 72,30" fill={fill} />
-        {/* walls */}
-        <rect x="6" y="30" width="60" height="36" fill={fill} />
-        {/* door */}
-        <rect x="28" y="44" width="16" height="22" rx="2"
-          fill={isDark ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.22)'} />
-        {/* left window */}
-        <rect x="11" y="36" width="14" height="12" rx="1.5"
-          fill={isDark ? 'rgba(253,230,138,0.18)' : 'rgba(255,255,255,0.30)'} />
-        {/* right window */}
-        <rect x="47" y="36" width="14" height="12" rx="1.5"
-          fill={isDark ? 'rgba(253,230,138,0.18)' : 'rgba(255,255,255,0.30)'} />
-        {/* chimney */}
-        <rect x="48" y="8" width="10" height="24" fill={fill} />
-      </svg>
-    </div>
-  )
-}
-
-/* ─── Tree SVG shapes ───────────────────────────────────────────────────────── */
-function PineTree({ fill, h = 52 }: { fill: string; h?: number }) {
-  const w = h * 0.56
-  return (
-    <svg width={w} height={h + 10} viewBox={`0 0 ${w} ${h + 10}`} overflow="visible" aria-hidden="true">
+    <svg width={w} height={h + 8} viewBox={`0 0 ${w} ${h + 8}`} overflow="visible" aria-hidden="true">
       <polygon points={`${w / 2},0 0,${h} ${w},${h}`} fill={fill} />
-      <rect x={w / 2 - 3} y={h} width="6" height="10" rx="1" fill={fill} opacity={0.60} />
+      <rect x={w / 2 - 2.5} y={h} width="5" height="8" rx="1" fill={fill} opacity={0.52} />
     </svg>
   )
 }
-function RoundTree({ fill, h = 50 }: { fill: string; h?: number }) {
-  const r = h * 0.42
-  const cx = r * 1.3
+function RoundTree({ fill, h = 48 }: { fill: string; h?: number }) {
+  const r = h * 0.40; const cx = r * 1.28
   return (
-    <svg width={cx * 2} height={h + 10} viewBox={`0 0 ${cx * 2} ${h + 10}`} overflow="visible" aria-hidden="true">
-      <circle cx={cx} cy={r} r={r} fill={fill} />
-      <rect x={cx - 3.5} y={r * 1.6} width="7" height={h - r * 1.6 + 8} rx="1.5" fill={fill} opacity={0.55} />
+    <svg width={cx * 2} height={h + 8} viewBox={`0 0 ${cx * 2} ${h + 8}`} overflow="visible" aria-hidden="true">
+      <motion.g
+        style={{ transformOrigin: `${cx}px ${h + 3}px` }}
+        animate={{ rotate: [-2, 2, -2] }}
+        transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        <circle cx={cx} cy={r} r={r} fill={fill} />
+        <rect x={cx - 3} y={r * 1.62} width="6" height={h - r * 1.62 + 8} rx="1.5" fill={fill} opacity={0.50} />
+      </motion.g>
     </svg>
   )
 }
-
-/* ─── Tree placement layer ──────────────────────────────────────────────────── */
 function TreeLayer({ isDark }: { isDark: boolean }) {
-  const fill = isDark ? 'rgba(14,26,50,0.92)' : 'rgba(18,78,42,0.86)'
-  const trees: { x: string; type: 'pine' | 'round'; sc: number; bot: number }[] = [
-    { x: '3%',  type: 'pine',  sc: 0.66, bot: 100 },
-    { x: '11%', type: 'round', sc: 0.80, bot: 96  },
-    { x: '22%', type: 'pine',  sc: 0.52, bot: 104 },
-    { x: '34%', type: 'round', sc: 0.86, bot: 94  },
-    { x: '48%', type: 'pine',  sc: 0.60, bot: 102 },
-    { x: '60%', type: 'round', sc: 0.76, bot: 98  },
-    { x: '73%', type: 'pine',  sc: 0.68, bot: 100 },
-    { x: '84%', type: 'round', sc: 0.56, bot: 104 },
-    { x: '93%', type: 'pine',  sc: 0.62, bot: 98  },
+  const fill = isDark ? 'rgba(8,14,30,0.92)' : 'rgba(14,60,32,0.86)'
+  const trees: { x: string; t: 'p' | 'r'; sc: number; bot: number }[] = [
+    { x: '2%',  t: 'p', sc: 0.58, bot: 98 },
+    { x: '9%',  t: 'r', sc: 0.72, bot: 94 },
+    { x: '17%', t: 'p', sc: 0.48, bot: 102 },
+    { x: '29%', t: 'r', sc: 0.80, bot: 92 },
+    { x: '44%', t: 'p', sc: 0.55, bot: 100 },
+    { x: '58%', t: 'r', sc: 0.68, bot: 96 },
+    { x: '70%', t: 'p', sc: 0.62, bot: 98 },
+    { x: '81%', t: 'r', sc: 0.52, bot: 102 },
+    { x: '91%', t: 'p', sc: 0.58, bot: 97 },
   ]
   return (
     <>
       {trees.map((t, i) => (
-        <div key={i} style={{
-          position: 'absolute', left: t.x, bottom: t.bot,
-          transform: `scale(${t.sc})`, transformOrigin: 'bottom center',
-        }}>
-          {t.type === 'pine' ? <PineTree fill={fill} h={52} /> : <RoundTree fill={fill} h={50} />}
+        <div
+          key={i}
+          style={{ position: 'absolute', left: t.x, bottom: t.bot, transform: `scale(${t.sc})`, transformOrigin: 'bottom center' }}
+        >
+          {t.t === 'p' ? <PineTree fill={fill} h={50} /> : <RoundTree fill={fill} h={48} />}
         </div>
       ))}
     </>
   )
 }
 
-/* ─── Illustrated walking character ───────────────────────────────────────────
-   Samsung-style flat design: real proportions, face, clothing, accessories.
-   SVG viewBox="0 0 62 118" (1:1 px mapping), overflow=visible for umbrella.
-   motion.g groups keep shoes/hands anchored to rotating limbs.
-   ──────────────────────────────────────────────────────────────────────────── */
-function WalkingCharacter({ condition }: { condition: SceneCondition; isDark?: boolean }) {
-  const skinColor  = '#F5CBA7'
-  const hairColor  = '#2C1810'
-  const pantsColor = '#374151'
-  const shoeColor  = '#1F2937'
-  const jacketColor = jacketColorMap[condition]
-
-  const isRainy = ['rain', 'thunder', 'drizzle'].includes(condition)
-  const isSnowy = condition === 'snow'
-  const isClear = condition === 'clear'
-
-  const walkT = { duration: 0.70, repeat: Infinity, ease: 'easeInOut' as const }
-
-  /* Arms: pivot at shoulder joints (18, 34) and (44, 34) */
-  const leftArmRotate  = isRainy ? ([-6, -6, -6] as number[])  : ([-26, 20, -26] as number[])
-  const rightArmRotate = isRainy ? ([0,   0,   0] as number[]) : ([20, -26, 20]  as number[])
-
+/* ─── Flying birds (clear / cloudy) ─────────────────────────────────────── */
+function SceneBirds({ isDark }: { isDark: boolean }) {
+  const col = isDark ? 'rgba(148,163,184,0.55)' : 'rgba(30,58,138,0.42)'
+  const flock = useMemo(() => [
+    { topPct: 16, scale: 1.00, delay: 0,  dur: 24, count: 2 },
+    { topPct: 28, scale: 0.65, delay: 6,  dur: 30, count: 3 },
+    { topPct: 10, scale: 0.45, delay: 14, dur: 36, count: 2 },
+    { topPct: 38, scale: 0.80, delay: 20, dur: 21, count: 2 },
+  ], [])
   return (
-    <motion.div
-      style={{ position: 'absolute', bottom: 52, overflow: 'visible' }}
-      initial={{ x: '110vw' }}
-      animate={{ x: '-18vw' }}
-      transition={{ duration: 28, repeat: Infinity, ease: 'linear', delay: 4 }}
-    >
-      <svg width="62" height="118" viewBox="0 0 62 118" overflow="visible" aria-hidden="true">
-
-        {/* ── Umbrella (rain) ─────────────────────────────────────────────── */}
-        {isRainy && (
-          <g>
-            {/* canopy */}
-            <path d="M7,-44 Q31,-66 55,-44 Q55,-26 31,-28 Q7,-26 7,-44 Z"
-              fill="rgba(147,197,253,0.65)" stroke="#3B82F6" strokeWidth="2" />
-            {/* panel lines */}
-            <line x1="31" y1="-64" x2="31" y2="-28" stroke="rgba(59,130,246,0.40)" strokeWidth="1" />
-            <line x1="19" y1="-62" x2="16" y2="-28" stroke="rgba(59,130,246,0.30)" strokeWidth="1" />
-            <line x1="43" y1="-62" x2="46" y2="-28" stroke="rgba(59,130,246,0.30)" strokeWidth="1" />
-            {/* handle */}
-            <path d="M31,-28 L31,-2" stroke="#3B82F6" strokeWidth="2.2" strokeLinecap="round" />
-          </g>
-        )}
-
-        {/* ── Winter hat (snow) ───────────────────────────────────────────── */}
-        {isSnowy && (
-          <g>
-            <path d="M18,8 Q31,-8 44,8 L42,15 Q31,10 20,15 Z" fill="#F97316" />
-            <rect x="13" y="13" width="36" height="5" rx="2.5" fill="#EA580C" />
-            {/* pom-pom */}
-            <circle cx="31" cy="-6" r="5" fill="#FED7AA" />
-          </g>
-        )}
-
-        {/* ── Sun hat (clear) ─────────────────────────────────────────────── */}
-        {isClear && (
-          <g>
-            <ellipse cx="31" cy="7" rx="20" ry="5" fill="#D97706" opacity={0.92} />
-            <ellipse cx="31" cy="4" rx="11" ry="6.5" fill="#FBBF24" />
-          </g>
-        )}
-
-        {/* ── Head ────────────────────────────────────────────────────────── */}
-        <circle cx="31" cy="14" r="12" fill={skinColor} />
-
-        {/* hair */}
-        <path d="M19,10 Q23,1 31,1 Q39,1 43,10 Q39,5 31,4 Q23,5 19,10 Z" fill={hairColor} />
-
-        {/* eyes */}
-        <circle cx="26" cy="12" r="2" fill="#1F2937" />
-        <circle cx="36" cy="12" r="2" fill="#1F2937" />
-        {/* eye shine */}
-        <circle cx="27" cy="11" r="0.8" fill="white" opacity={0.8} />
-        <circle cx="37" cy="11" r="0.8" fill="white" opacity={0.8} />
-
-        {/* smile */}
-        <path d="M26,18 Q31,23 36,18" stroke="#B8702A" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-
-        {/* ── Body / jacket ───────────────────────────────────────────────── */}
-        <rect x="19" y="26" width="24" height="32" rx="5" fill={jacketColor} />
-        {/* collar */}
-        <path d="M23,26 L31,32 L39,26" fill="none"
-          stroke={`rgba(255,255,255,0.30)`} strokeWidth="1.5" strokeLinejoin="round" />
-        {/* zip / centre seam */}
-        <line x1="31" y1="32" x2="31" y2="57"
-          stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" strokeDasharray="2.5 2" />
-
-        {/* ── Left arm + hand ─────────────────────────────────────────────── */}
-        <motion.g style={{ transformOrigin: '19px 34px' }} animate={{ rotate: leftArmRotate }} transition={walkT}>
-          <line x1="19" y1="34" x2="8" y2="51"
-            stroke={jacketColor} strokeWidth="7" strokeLinecap="round" />
-          <circle cx="7" cy="54" r="4.5" fill={skinColor} />
-        </motion.g>
-
-        {/* ── Right arm + hand (raised if holding umbrella) ───────────────── */}
-        {isRainy ? (
-          /* Static raised arm holding umbrella handle */
-          <g>
-            <line x1="43" y1="34" x2="31" y2="4"
-              stroke={jacketColor} strokeWidth="7" strokeLinecap="round" />
-            <circle cx="31" cy="1" r="4.5" fill={skinColor} />
-          </g>
-        ) : (
-          <motion.g style={{ transformOrigin: '43px 34px' }} animate={{ rotate: rightArmRotate }} transition={walkT}>
-            <line x1="43" y1="34" x2="54" y2="51"
-              stroke={jacketColor} strokeWidth="7" strokeLinecap="round" />
-            <circle cx="55" cy="54" r="4.5" fill={skinColor} />
-          </motion.g>
-        )}
-
-        {/* ── Left leg + shoe ─────────────────────────────────────────────── */}
-        <motion.g style={{ transformOrigin: '25px 58px' }}
-          initial={{ rotate: -28 }}
-          animate={{ rotate: [-28, 28, -28] }}
-          transition={walkT}
+    <>
+      {flock.map((f, fi) => (
+        <motion.div
+          key={fi}
+          style={{ position: 'absolute', top: `${f.topPct}%` }}
+          initial={{ x: '110vw' }}
+          animate={{ x: '-10vw' }}
+          transition={{ duration: f.dur, delay: f.delay, repeat: Infinity, ease: 'linear' }}
         >
-          <line x1="25" y1="58" x2="22" y2="94"
-            stroke={pantsColor} strokeWidth="9" strokeLinecap="round" />
-          {/* shoe */}
-          <ellipse cx="19" cy="98" rx="10" ry="5" fill={shoeColor} />
-          {/* shoe highlight */}
-          <ellipse cx="17" cy="96" rx="4" ry="2" fill="rgba(255,255,255,0.12)" />
-        </motion.g>
-
-        {/* ── Right leg + shoe ────────────────────────────────────────────── */}
-        <motion.g style={{ transformOrigin: '37px 58px' }}
-          initial={{ rotate: 28 }}
-          animate={{ rotate: [28, -28, 28] }}
-          transition={walkT}
-        >
-          <line x1="37" y1="58" x2="40" y2="94"
-            stroke={pantsColor} strokeWidth="9" strokeLinecap="round" />
-          {/* shoe */}
-          <ellipse cx="43" cy="98" rx="10" ry="5" fill={shoeColor} />
-          {/* shoe highlight */}
-          <ellipse cx="45" cy="96" rx="4" ry="2" fill="rgba(255,255,255,0.12)" />
-        </motion.g>
-
-      </svg>
-    </motion.div>
+          <svg width={38 * f.scale} height={14 * f.scale} viewBox="0 0 38 14" aria-hidden="true">
+            {Array.from({ length: f.count }, (_, i) => (
+              <path
+                key={i}
+                d={`M${i * 18},${i % 2 === 0 ? 6 : 8} Q${i * 18 + 5},${i % 2 === 0 ? 2 : 4} ${i * 18 + 9},${i % 2 === 0 ? 6 : 8} Q${i * 18 + 13},${i % 2 === 0 ? 2 : 4} ${i * 18 + 18},${i % 2 === 0 ? 6 : 8}`}
+                fill="none" stroke={col} strokeWidth="1.8" strokeLinecap="round" opacity={1 - i * 0.18}
+              />
+            ))}
+          </svg>
+        </motion.div>
+      ))}
+    </>
   )
 }
 
-/* ─── Sun orb (clear + light mode) ─────────────────────────────────────────── */
-function SceneSun(_: { isDark?: boolean }) {
+/* ─── Sun / Moon ────────────────────────────────────────────────────────── */
+function SceneSun() {
   return (
     <motion.div
-      style={{ position: 'absolute', right: '11%', bottom: 105, width: 54, height: 54 }}
-      animate={{ y: [-5, 5, -5] }}
-      transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
+      style={{ position: 'absolute', right: '12%', bottom: 106, width: 52, height: 52 }}
+      animate={{ y: [-4, 4, -4] }}
+      transition={{ duration: 4.8, repeat: Infinity, ease: 'easeInOut' }}
     >
       <div style={{
         width: '100%', height: '100%', borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(255,251,200,0.98) 0%, rgba(253,230,138,0.88) 50%, rgba(245,158,11,0.38) 100%)',
-        boxShadow: '0 0 30px rgba(245,158,11,0.62), 0 0 70px rgba(245,158,11,0.26)',
-        filter: 'blur(0.5px)',
+        background: 'radial-gradient(circle, rgba(255,251,200,0.98) 0%, rgba(253,230,138,0.88) 48%, rgba(245,158,11,0.32) 100%)',
+        boxShadow: '0 0 28px rgba(245,158,11,0.65), 0 0 68px rgba(245,158,11,0.26)',
       }} />
     </motion.div>
   )
 }
-
-/* ─── Moon orb (clear + dark mode) ─────────────────────────────────────────── */
 function SceneMoon() {
   return (
     <motion.div
-      style={{ position: 'absolute', right: '12%', bottom: 108, width: 40, height: 40 }}
-      animate={{ y: [-4, 4, -4] }}
+      style={{ position: 'absolute', right: '12%', bottom: 106, width: 44, height: 44 }}
+      animate={{ y: [-3, 3, -3] }}
       transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
     >
       <div style={{
         width: '100%', height: '100%', borderRadius: '50%',
-        background: 'radial-gradient(circle at 35% 35%, rgba(226,232,240,0.96) 0%, rgba(148,163,184,0.72) 70%, transparent 100%)',
-        boxShadow: '0 0 20px rgba(148,163,184,0.48), 0 0 44px rgba(148,163,184,0.18)',
+        background: 'radial-gradient(circle at 38% 38%, rgba(241,245,249,0.96) 0%, rgba(203,213,225,0.82) 60%, rgba(148,163,184,0.24) 100%)',
+        boxShadow: '0 0 22px rgba(203,213,225,0.45), 0 0 56px rgba(148,163,184,0.18)',
       }} />
     </motion.div>
   )
 }
 
-/* ─── Lightning bolt + flash (thunder) ─────────────────────────────────────── */
-function SceneLightning({ isDark }: { isDark: boolean }) {
-  const boltColor  = isDark ? '#FDE68A' : '#F59E0B'
-  const flashColor = isDark ? 'rgba(139,92,246,0.18)' : 'rgba(109,40,217,0.22)'
-
-  // keyframe times: two double-flashes per 7-second cycle
-  const flashTimes = [0, 0.26, 0.28, 0.30, 0.34, 0.58, 0.60, 0.62, 0.66, 1] as const
-  const flashOp    = [0, 0,    1,    0.4,  0,    0,    0.9,  0.3,  0,    0]
-
+/* ─── Rain puddle rings ──────────────────────────────────────────────────── */
+function RainPuddles({ isDark }: { isDark: boolean }) {
+  const ring = isDark ? 'rgba(147,197,253,0.38)' : 'rgba(30,64,138,0.32)'
+  const puddles = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => ({
+      left: `${8 + i * 13}%`,
+      delay: i * 0.52,
+      dur: 1.8 + (i % 4) * 0.3,
+    })),
+    [],
+  )
   return (
     <>
-      {/* Scene-wide flash */}
+      {puddles.map((p, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'absolute', left: p.left, bottom: 14,
+            width: 26, height: 9, borderRadius: '50%',
+            border: `1.5px solid ${ring}`, transformOrigin: 'center',
+          }}
+          animate={{ scaleX: [0.18, 2.4], scaleY: [0.5, 0.25], opacity: [0.85, 0] }}
+          transition={{ duration: p.dur, delay: p.delay, repeat: Infinity, ease: 'easeOut' }}
+        />
+      ))}
+    </>
+  )
+}
+
+/* ─── Sun shimmer (clear light-mode) ─────────────────────────────────────── */
+function SunShimmer({ isDark }: { isDark: boolean }) {
+  if (isDark) return null
+  return (
+    <div style={{
+      position: 'absolute', bottom: 14, left: '8%', right: '8%',
+      height: 5, borderRadius: 3,
+      background: 'linear-gradient(to right, transparent, rgba(253,230,138,0.48), transparent)',
+    }}>
       <motion.div
-        className="absolute inset-0"
-        style={{ background: flashColor }}
-        animate={{ opacity: flashOp }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'linear', times: [...flashTimes] }}
+        className="absolute inset-0 rounded"
+        style={{ background: 'linear-gradient(to right, transparent, rgba(253,230,138,0.82), transparent)' }}
+        animate={{ opacity: [0, 1, 0] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
       />
-      {/* Bolt SVG */}
-      <motion.div
-        style={{ position: 'absolute', right: '30%', top: 8 }}
-        animate={{ opacity: flashOp }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'linear', times: [...flashTimes] }}
-      >
-        <svg width="22" height="52" viewBox="0 0 22 52" aria-hidden="true">
-          <path d="M14,0 L4,26 L10,26 L8,52 L20,20 L13,20 Z" fill={boltColor} />
-        </svg>
-      </motion.div>
-      {/* Second bolt, offset */}
-      <motion.div
-        style={{ position: 'absolute', right: '44%', top: 16 }}
-        animate={{ opacity: flashOp.slice().reverse() }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'linear', times: [...flashTimes], delay: 0.8 }}
-      >
-        <svg width="16" height="38" viewBox="0 0 16 38" aria-hidden="true">
-          <path d="M10,0 L3,19 L7,19 L6,38 L14,14 L9,14 Z" fill={boltColor} opacity={0.75} />
-        </svg>
-      </motion.div>
+    </div>
+  )
+}
+
+/* ─── Ground mist wisps ──────────────────────────────────────────────────── */
+function GroundMist({ isDark }: { isDark: boolean }) {
+  const col = isDark ? 'rgba(148,163,184,0.10)' : 'rgba(148,163,184,0.22)'
+  return (
+    <>
+      {[
+        { bot: 18, w: '85%', l: '7.5%', dur: 10, d: 3 },
+        { bot: 32, w: '65%', l: '17%',  dur: 14, d: 7 },
+        { bot: 48, w: '45%', l: '27%',  dur: 18, d: 11 },
+      ].map((m, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'absolute', bottom: m.bot, left: m.l, width: m.w,
+            height: 28, background: col, borderRadius: 28, filter: 'blur(12px)',
+          }}
+          animate={{ x: ['-5%', '5%', '-5%'], opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: m.dur, delay: m.d, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      ))}
     </>
   )
 }
 
-/* ─── In-scene rain drops ───────────────────────────────────────────────────── */
-function SceneRain({ heavy, isDark }: { heavy: boolean; isDark: boolean }) {
-  const count = heavy ? 24 : 15
-  const drops = useMemo(
-    () => Array.from({ length: count }, (_, i) => ({
-      id:      i,
-      left:    `${4 + (i / count) * 92}%`,
-      delay:   (i * 0.10) % 1.8,
-      dur:     heavy ? 0.34 + (i % 4) * 0.04 : 0.50 + (i % 4) * 0.06,
-      height:  heavy ? 18 + (i % 6) * 2 : 12 + (i % 5) * 2,
-      opacity: isDark ? 0.48 + (i % 3) * 0.16 : 0.64 + (i % 3) * 0.14,
+/* ─── Snow caps on rooftops ─────────────────────────────────────────────── */
+function RooftopSnow({ isDark }: { isDark: boolean }) {
+  const col = isDark ? 'rgba(224,242,254,0.55)' : 'rgba(186,230,253,0.72)'
+  const snowCaps = useMemo(() => {
+    const caps: { x: number; w: number; y: number }[] = []
+    for (let i = 0; i < NEAR_PROFILE.length - 1; i++) {
+      const [x1, y1] = NEAR_PROFILE[i]
+      const [x2]     = NEAR_PROFILE[i + 1]
+      if (x2 - x1 >= 28) caps.push({ x: x1, w: x2 - x1, y: y1 })
+    }
+    return caps
+  }, [])
+  return (
+    <svg
+      viewBox="0 0 1440 200"
+      preserveAspectRatio="none"
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      aria-hidden="true"
+    >
+      {snowCaps.map((c, i) => (
+        <rect key={i} x={c.x} y={c.y} width={c.w} height={Math.min(7, c.w * 0.18)}
+          rx="1.5" fill={col} opacity={0.75} />
+      ))}
+    </svg>
+  )
+}
+
+/* ─── Thunder scene flash ────────────────────────────────────────────────── */
+function ThunderFlash({ isDark }: { isDark: boolean }) {
+  return (
+    <motion.div
+      className="absolute inset-0 pointer-events-none"
+      style={{ background: isDark ? 'rgba(139,92,246,0.16)' : 'rgba(109,40,217,0.20)' }}
+      animate={{ opacity: [0, 0, 1, 0.15, 0, 0, 0.75, 0] }}
+      transition={{ duration: 5.5, delay: 2.0, repeat: Infinity, times: [0, 0.40, 0.42, 0.46, 0.50, 0.74, 0.76, 1] }}
+    />
+  )
+}
+
+/* ─── Foreground grass blades ────────────────────────────────────────────── */
+function ForegroundGrass({ isDark }: { isDark: boolean }) {
+  const col = isDark ? 'rgba(8,16,36,0.80)' : 'rgba(16,80,38,0.68)'
+  const blades = useMemo(
+    () => Array.from({ length: 30 }, (_, i) => ({
+      x: `${1 + (i / 30) * 98}%`,
+      h: 14 + (i % 5) * 4,
+      delay: (i * 0.17) % 2.8,
+      dur: 2.2 + (i % 5) * 0.45,
+      lean: (i % 2 === 0 ? 1 : -1) * (7 + (i % 3) * 5),
     })),
-    [heavy, isDark, count]
+    [],
   )
-  const grad = isDark
-    ? 'linear-gradient(to bottom, rgba(147,197,253,0.92), rgba(147,197,253,0))'
-    : 'linear-gradient(to bottom, rgba(30,64,138,0.85), rgba(30,64,138,0))'
   return (
     <>
-      {drops.map((d) => (
-        <motion.div key={d.id} className="absolute w-px rounded-full"
-          style={{ left: d.left, top: 0, height: d.height, background: grad, opacity: d.opacity }}
-          animate={{ y: '200px' }}
-          transition={{ duration: d.dur, delay: d.delay, repeat: Infinity, ease: 'linear' }}
+      {blades.map((b, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'absolute', left: b.x, bottom: 2,
+            width: 3, height: b.h,
+            background: `linear-gradient(to top, ${col}, transparent)`,
+            borderRadius: '2px 2px 0 0',
+            transformOrigin: 'bottom center',
+          }}
+          animate={{ rotate: [0, b.lean, 0] }}
+          transition={{ duration: b.dur, delay: b.delay, repeat: Infinity, ease: 'easeInOut' }}
         />
       ))}
     </>
   )
 }
 
-/* ─── In-scene snow ─────────────────────────────────────────────────────────── */
-function SceneSnow({ isDark }: { isDark: boolean }) {
-  const flakes = useMemo(
-    () => Array.from({ length: 18 }, (_, i) => ({
-      id:      i,
-      left:    `${(i / 18) * 100}%`,
-      size:    2.5 + (i % 4),
-      delay:   (i * 0.19) % 3.2,
-      dur:     2.0 + (i % 5) * 0.38,
-      opacity: isDark ? 0.60 + (i % 3) * 0.16 : 0.52 + (i % 3) * 0.14,
-    })),
-    [isDark]
-  )
+/* ─── Chimney smoke wisps ───────────────────────────────────────────────── */
+/* Smoke rises from three approximate chimney positions on the city layer.   */
+function ChimneySmoke({ isDark }: { isDark: boolean }) {
+  const col = isDark ? 'rgba(148,163,184,0.25)' : 'rgba(100,116,139,0.18)'
+  const chimneys = [
+    { left: '22%', bot: 96 },
+    { left: '54%', bot: 90 },
+    { left: '77%', bot: 92 },
+  ]
   return (
     <>
-      {flakes.map((f) => (
-        <motion.div key={f.id}
-          className={`absolute rounded-full ${isDark ? 'bg-white' : 'bg-slate-500'}`}
-          style={{ left: f.left, top: 0, width: f.size, height: f.size, opacity: f.opacity }}
-          animate={{ y: '195px', x: [0, 14, -10, 6, 0] }}
-          transition={{ duration: f.dur, delay: f.delay, repeat: Infinity, ease: 'linear' }}
+      {chimneys.map((ch, ci) =>
+        [0, 1, 2].map((j) => (
+          <motion.div
+            key={`${ci}-${j}`}
+            style={{
+              position: 'absolute', left: ch.left, bottom: ch.bot,
+              width: 10, height: 16, borderRadius: '50%',
+              background: col, filter: 'blur(5px)',
+              transformOrigin: 'center bottom',
+            }}
+            animate={{
+              y: [0, -48 - j * 16],
+              opacity: [0, 0.72, 0],
+              scaleX: [0.45, 1.6 + j * 0.45, 3.2],
+            }}
+            transition={{
+              duration: 3.8,
+              delay: j * 1.38 + ci * 0.55,
+              repeat: Infinity,
+              ease: 'easeOut',
+            }}
+          />
+        )),
+      )}
+    </>
+  )
+}
+
+/* ─── Fireflies (clear dark mode) ──────────────────────────────────────── */
+const FIREFLIES = Array.from({ length: 14 }, (_, i) => ({
+  left:   `${8  + (i * 137.508) % 84}%`,
+  top:    `${30 + (i * 63.2)    % 52}%`,
+  delay:  (i * 0.62) % 5.8,
+  dur:    1.9 + (i % 5) * 0.55,
+  dx:     (i % 2 === 0 ? 1 : -1) * (14 + (i % 3) * 9),
+  dy:     -7 - (i % 4) * 5,
+}))
+
+function Fireflies({ isDark }: { isDark: boolean }) {
+  if (!isDark) return null
+  return (
+    <>
+      {FIREFLIES.map((f, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'absolute', left: f.left, top: f.top,
+            width: 3, height: 3, borderRadius: '50%',
+            background: 'rgba(253,224,71,0.92)',
+            boxShadow: '0 0 7px rgba(253,224,71,0.75)',
+          }}
+          animate={{ opacity: [0, 1, 0], x: [0, f.dx], y: [0, f.dy] }}
+          transition={{ duration: f.dur, delay: f.delay, repeat: Infinity, ease: 'easeInOut' }}
         />
       ))}
     </>
   )
 }
 
-/* ─── Mist wisps ────────────────────────────────────────────────────────────── */
-function SceneMist({ isDark }: { isDark: boolean }) {
-  return (
-    <>
-      {[{ bot: 90, oD: 0.14, oL: 0.26, dur: 10 },
-        { bot: 72, oD: 0.10, oL: 0.20, dur: 14 },
-        { bot: 55, oD: 0.08, oL: 0.16, dur: 12 }].map((m, i) => (
-        <motion.div key={i}
-          className={`absolute left-0 right-0 h-10 blur-2xl ${isDark ? 'bg-slate-300' : 'bg-slate-500'}`}
-          style={{ bottom: m.bot, opacity: isDark ? m.oD : m.oL }}
-          animate={{ x: ['-5%', '5%', '-5%'] }}
-          transition={{ duration: m.dur, repeat: Infinity, ease: 'easeInOut' }}
-        />
-      ))}
-    </>
-  )
-}
-
-/* ─── Main export ───────────────────────────────────────────────────────────── */
+/* ─── Main export ───────────────────────────────────────────────────────── */
 export function LandscapeScene({ conditionId, isDark }: LandscapeSceneProps) {
   const prefersReducedMotion = useReducedMotion()
   if (prefersReducedMotion) return null
 
-  const condition = getSceneCondition(conditionId)
-  const hasRain   = ['rain', 'thunder', 'drizzle'].includes(condition)
-  const hasThunder = condition === 'thunder'
-  const hasSnow   = condition === 'snow'
-  const hasMist   = condition === 'mist'
-  const isClear   = condition === 'clear'
+  const cond    = getSceneCondition(conditionId)
+  const tint    = TINT[cond]
+  const isRainy = cond === 'rain' || cond === 'thunder' || cond === 'drizzle'
+  const isClear = cond === 'clear'
+  const isMisty = cond === 'mist' || cond === 'cloudy'
+  const isSnowy = cond === 'snow'
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 overflow-hidden pointer-events-none"
-      style={{ height: 190, zIndex: 2 }}
+      className="fixed bottom-0 left-0 right-0 pointer-events-none overflow-hidden"
+      style={{ height: 200, zIndex: 2 }}
       aria-hidden="true"
     >
-      {/* Top-edge fade — blends scene into page content above */}
-      <div className="absolute inset-x-0 top-0 z-10" style={{
-        height: 58,
-        background: isDark
-          ? 'linear-gradient(to bottom, #000000 0%, transparent 100%)'
-          : 'linear-gradient(to bottom, #5AAED4 0%, transparent 100%)',
-      }} />
+      {/* Horizon tint */}
+      <div className="absolute inset-0" style={{ background: isDark ? tint.dark : tint.light }} />
 
-      {/* ── Condition FX ── */}
-      {hasRain    && <SceneRain heavy={hasThunder} isDark={isDark} />}
-      {hasThunder && <SceneLightning isDark={isDark} />}
-      {hasSnow    && <SceneSnow isDark={isDark} />}
-      {hasMist    && <SceneMist isDark={isDark} />}
+      {/* Depth layers — back → front */}
+      <MountainLayer isDark={isDark} />
+      <CityLayer isDark={isDark} />
 
-      {/* ── Celestial bodies ── */}
-      {isClear && isDark  && <SceneMoon />}
-      {isClear && !isDark && <SceneSun />}
+      {/* Condition overlays */}
+      {isSnowy              && <RooftopSnow isDark={isDark} />}
+      {isMisty              && <GroundMist isDark={isDark} />}
+      {cond === 'thunder'   && <ThunderFlash isDark={isDark} />}
 
-      {/* ── Background layers (trees → house → hills) ── */}
+      {/* Celestial bodies */}
+      {isClear &&  isDark   && <SceneMoon />}
+      {isClear && !isDark   && <SceneSun />}
+
+      {/* Birds */}
+      {(isClear || cond === 'cloudy') && <SceneBirds isDark={isDark} />}
+
+      {/* Ground */}
       <TreeLayer isDark={isDark} />
-      <HouseSilhouette isDark={isDark} />
       <GroundLayer isDark={isDark} />
 
-      {/* ── Walking character ── */}
-      <WalkingCharacter condition={condition} isDark={isDark} />
+      {/* Ground FX */}
+      {isRainy && <RainPuddles isDark={isDark} />}
+      {isClear && <SunShimmer isDark={isDark} />}
+
+      {/* City life */}
+      <ChimneySmoke isDark={isDark} />
+      {isClear && <Fireflies isDark={isDark} />}
+
+      {/* Foreground */}
+      <ForegroundGrass isDark={isDark} />
     </div>
   )
 }
