@@ -8,9 +8,10 @@ import type { GeoCity } from '../types/weather'
 
 interface SearchBarProps {
   onSelect: (lat: number, lon: number, cityName: string) => void
+  autoDetect?: boolean
 }
 
-export function SearchBar({ onSelect }: SearchBarProps) {
+export function SearchBar({ onSelect, autoDetect }: SearchBarProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GeoCity[]>([])
   const [open, setOpen] = useState(false)
@@ -19,6 +20,16 @@ export function SearchBar({ onSelect }: SearchBarProps) {
   const debouncedQuery = useDebounce(query, 400)
   const geo = useGeolocation()
   const containerRef = useRef<HTMLDivElement>(null)
+  const autoDetectFiredRef = useRef(false)
+
+  // Auto-detect location on first mount if requested
+  useEffect(() => {
+    if (autoDetect && !autoDetectFiredRef.current) {
+      autoDetectFiredRef.current = true
+      geo.detect()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!debouncedQuery.trim() || debouncedQuery.length < 2) {

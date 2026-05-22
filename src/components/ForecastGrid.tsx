@@ -1,5 +1,5 @@
+import { memo, useMemo, useRef } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { useRef } from 'react'
 import { ArrowUp, ArrowDown } from 'lucide-react'
 import type { ForecastItem } from '../types/weather'
 
@@ -30,13 +30,11 @@ function groupByDay(items: ForecastItem[]): DayForecast[] {
   const days: DayForecast[] = []
 
   for (const [date, dayItems] of map) {
-    if (date === today) continue // skip today — shown in WeatherHero
+    if (date === today) continue
     if (days.length >= 5) break
 
     const temps = dayItems.map((i) => i.main.temp)
-    const pops = dayItems.map((i) => i.pop)
-
-    // Use the midday item (or closest) for icon and description
+    const pops  = dayItems.map((i) => i.pop)
     const midday = dayItems.find((i) => i.dt_txt.includes('12:00:00')) ?? dayItems[Math.floor(dayItems.length / 2)]
 
     days.push({
@@ -61,7 +59,7 @@ interface ForecastCardProps {
   index: number
 }
 
-function ForecastCard({ day, unit, index }: ForecastCardProps) {
+const ForecastCard = memo(function ForecastCard({ day, unit, index }: ForecastCardProps) {
   const sym = unit === 'C' ? '°' : '°'
   const iconUrl = `https://openweathermap.org/img/wn/${day.icon}@2x.png`
 
@@ -70,9 +68,9 @@ function ForecastCard({ day, unit, index }: ForecastCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.4, ease: 'easeOut' }}
-      className="glass-card flex flex-col items-center gap-2 text-center hover:border-[rgba(255,255,255,0.22)] transition-colors"
+      className="glass-card flex flex-col items-center gap-2 text-center"
     >
-      <p className="font-code text-xs text-[#94A3B8] uppercase tracking-widest">{day.dayLabel}</p>
+      <p className="font-code text-xs text-dim uppercase tracking-widest">{day.dayLabel}</p>
 
       <img
         src={iconUrl}
@@ -81,16 +79,16 @@ function ForecastCard({ day, unit, index }: ForecastCardProps) {
         loading="lazy"
       />
 
-      <p className="font-sans text-[10px] text-[#94A3B8] capitalize leading-tight">
+      <p className="font-sans text-[10px] text-dim capitalize leading-tight">
         {day.description}
       </p>
 
       <div className="flex items-center gap-2 mt-1">
-        <span className="flex items-center gap-0.5 font-code text-sm font-semibold text-[#F1F5F9]">
+        <span className="flex items-center gap-0.5 font-code text-sm font-semibold text-fg">
           <ArrowUp className="w-3 h-3 text-[#3B82F6]" />
           {day.tempMax}{sym}
         </span>
-        <span className="flex items-center gap-0.5 font-code text-sm text-[#64748B]">
+        <span className="flex items-center gap-0.5 font-code text-sm text-faint">
           <ArrowDown className="w-3 h-3" />
           {day.tempMin}{sym}
         </span>
@@ -103,12 +101,12 @@ function ForecastCard({ day, unit, index }: ForecastCardProps) {
       )}
     </motion.div>
   )
-}
+})
 
-export function ForecastGrid({ items, unit }: ForecastGridProps) {
+export const ForecastGrid = memo(function ForecastGrid({ items, unit }: ForecastGridProps) {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-60px' })
-  const days = groupByDay(items)
+  const days = useMemo(() => groupByDay(items), [items])
 
   if (days.length === 0) return null
 
@@ -119,7 +117,7 @@ export function ForecastGrid({ items, unit }: ForecastGridProps) {
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ duration: 0.5, ease: 'easeOut' }}
     >
-      <p className="font-sans text-xs text-[#94A3B8] uppercase tracking-widest mb-3 px-1">
+      <p className="font-sans text-xs text-dim uppercase tracking-widest mb-3 px-1">
         5-Day Forecast
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -129,4 +127,4 @@ export function ForecastGrid({ items, unit }: ForecastGridProps) {
       </div>
     </motion.div>
   )
-}
+})

@@ -7,6 +7,7 @@ import { WeatherHero } from './components/WeatherHero'
 import { WeatherDetails } from './components/WeatherDetails'
 import { SkeletonHero, SkeletonDetails } from './components/SkeletonCard'
 import { ErrorState } from './components/ErrorState'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { WeatherBackground } from './components/WeatherBackground'
 import { useWeatherData } from './hooks/useWeatherData'
 import { hasApiKey } from './services/weatherApi'
@@ -126,6 +127,7 @@ function App() {
         onThemeToggle={handleThemeToggle}
       />
 
+      <ErrorBoundary>
       <main className="relative z-10 pt-28 px-4 pb-12 max-w-4xl mx-auto">
         <div className="flex flex-col items-center gap-6">
 
@@ -144,7 +146,7 @@ function App() {
                 Real-time weather for any city on Earth
               </p>
             </div>
-            <SearchBar onSelect={handleLocationSelect} />
+            <SearchBar onSelect={handleLocationSelect} autoDetect />
           </motion.div>
 
           {/* API key setup banner */}
@@ -180,7 +182,7 @@ function App() {
                 <WeatherDetails data={current} unit={unit} />
                 {forecast && (
                   <>
-                    <HourlyChart items={forecast.list} unit={unit} />
+                    <HourlyChart items={forecast.list} unit={unit} isDark={isDark} />
                     <ForecastGrid items={forecast.list} unit={unit} />
                   </>
                 )}
@@ -204,6 +206,7 @@ function App() {
 
         </div>
       </main>
+      </ErrorBoundary>
     </div>
   )
 }

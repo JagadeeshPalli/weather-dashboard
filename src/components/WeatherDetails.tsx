@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { Droplets, Wind, Gauge, Eye, Cloud, Navigation2 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -16,7 +17,7 @@ interface StatCardProps {
   bar?: number
 }
 
-function StatCard({ icon, label, value, index, bar }: StatCardProps) {
+const StatCard = memo(function StatCard({ icon, label, value, index, bar }: StatCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -41,7 +42,7 @@ function StatCard({ icon, label, value, index, bar }: StatCardProps) {
       )}
     </motion.div>
   )
-}
+})
 
 function windDir(deg: number): string {
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
