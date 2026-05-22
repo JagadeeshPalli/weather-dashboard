@@ -490,6 +490,76 @@ function ForegroundGrass({ isDark }: { isDark: boolean }) {
   )
 }
 
+/* ─── Chimney smoke wisps ───────────────────────────────────────────────── */
+/* Smoke rises from three approximate chimney positions on the city layer.   */
+function ChimneySmoke({ isDark }: { isDark: boolean }) {
+  const col = isDark ? 'rgba(148,163,184,0.25)' : 'rgba(100,116,139,0.18)'
+  const chimneys = [
+    { left: '22%', bot: 96 },
+    { left: '54%', bot: 90 },
+    { left: '77%', bot: 92 },
+  ]
+  return (
+    <>
+      {chimneys.map((ch, ci) =>
+        [0, 1, 2].map((j) => (
+          <motion.div
+            key={`${ci}-${j}`}
+            style={{
+              position: 'absolute', left: ch.left, bottom: ch.bot,
+              width: 10, height: 16, borderRadius: '50%',
+              background: col, filter: 'blur(5px)',
+              transformOrigin: 'center bottom',
+            }}
+            animate={{
+              y: [0, -48 - j * 16],
+              opacity: [0, 0.72, 0],
+              scaleX: [0.45, 1.6 + j * 0.45, 3.2],
+            }}
+            transition={{
+              duration: 3.8,
+              delay: j * 1.38 + ci * 0.55,
+              repeat: Infinity,
+              ease: 'easeOut',
+            }}
+          />
+        )),
+      )}
+    </>
+  )
+}
+
+/* ─── Fireflies (clear dark mode) ──────────────────────────────────────── */
+const FIREFLIES = Array.from({ length: 14 }, (_, i) => ({
+  left:   `${8  + (i * 137.508) % 84}%`,
+  top:    `${30 + (i * 63.2)    % 52}%`,
+  delay:  (i * 0.62) % 5.8,
+  dur:    1.9 + (i % 5) * 0.55,
+  dx:     (i % 2 === 0 ? 1 : -1) * (14 + (i % 3) * 9),
+  dy:     -7 - (i % 4) * 5,
+}))
+
+function Fireflies({ isDark }: { isDark: boolean }) {
+  if (!isDark) return null
+  return (
+    <>
+      {FIREFLIES.map((f, i) => (
+        <motion.div
+          key={i}
+          style={{
+            position: 'absolute', left: f.left, top: f.top,
+            width: 3, height: 3, borderRadius: '50%',
+            background: 'rgba(253,224,71,0.92)',
+            boxShadow: '0 0 7px rgba(253,224,71,0.75)',
+          }}
+          animate={{ opacity: [0, 1, 0], x: [0, f.dx], y: [0, f.dy] }}
+          transition={{ duration: f.dur, delay: f.delay, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      ))}
+    </>
+  )
+}
+
 /* ─── Main export ───────────────────────────────────────────────────────── */
 export function LandscapeScene({ conditionId, isDark }: LandscapeSceneProps) {
   const prefersReducedMotion = useReducedMotion()
@@ -534,6 +604,10 @@ export function LandscapeScene({ conditionId, isDark }: LandscapeSceneProps) {
       {/* Ground FX */}
       {isRainy && <RainPuddles isDark={isDark} />}
       {isClear && <SunShimmer isDark={isDark} />}
+
+      {/* City life */}
+      <ChimneySmoke isDark={isDark} />
+      {isClear && <Fireflies isDark={isDark} />}
 
       {/* Foreground */}
       <ForegroundGrass isDark={isDark} />
