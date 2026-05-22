@@ -1,9 +1,14 @@
-import { useMemo, lazy, Suspense } from 'react'
+/**
+ * LandscapeScene — Samsung-style atmospheric bottom scene.
+ *
+ * Pure SVG + framer-motion, zero external dependencies.
+ * Layers (back → front):
+ *   sky tint → back trees → house → ground hills → road → front trees
+ *   → puddles/sun shimmer → distant character → walking character
+ *   → swaying grass → condition FX (rain/snow/mist/lightning)
+ */
+import { useMemo } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { useLottieAnim } from '../hooks/useLottieAnim'
-
-// Lazy-load lottie-react so it only bundles when actually needed
-const Lottie = lazy(() => import('lottie-react'))
 
 interface LandscapeSceneProps {
   conditionId: number
@@ -23,401 +28,452 @@ function getSceneCondition(id: number): SceneCondition {
   return 'default'
 }
 
-/* Jacket colour per condition ─────────────────────────────────────────────── */
-const jacketColorMap: Record<SceneCondition, string> = {
-  clear:   '#10B981',
-  rain:    '#3B82F6',
-  drizzle: '#60A5FA',
-  thunder: '#6366F1',
-  snow:    '#F97316',
-  cloudy:  '#64748B',
-  mist:    '#94A3B8',
-  default: '#64748B',
+const JACKET: Record<SceneCondition, string> = {
+  clear: '#10B981', rain: '#3B82F6', drizzle: '#60A5FA',
+  thunder: '#6366F1', snow: '#F97316', cloudy: '#64748B',
+  mist: '#94A3B8', default: '#64748B',
 }
 
-/* ─── Ground / Hill SVG ────────────────────────────────────────────────────── */
+/* ─── Ground + hills ────────────────────────────────────────────────────────── */
 function GroundLayer({ isDark }: { isDark: boolean }) {
-  const backFill  = isDark ? 'rgba(15,23,42,0.82)'  : 'rgba(34,100,50,0.60)'
-  const frontFill = isDark ? 'rgba(6,10,20,0.95)'   : 'rgba(19,74,38,0.84)'
+  const back  = isDark ? 'rgba(15,23,42,0.82)'  : 'rgba(34,100,50,0.60)'
+  const front = isDark ? 'rgba(6,10,20,0.95)'   : 'rgba(19,74,38,0.84)'
+  const road  = isDark ? 'rgba(30,41,59,0.88)'  : 'rgba(100,116,139,0.55)'
+  const line  = isDark ? 'rgba(248,213,69,0.30)' : 'rgba(248,213,69,0.55)'
   return (
     <svg viewBox="0 0 1440 190" preserveAspectRatio="none"
       className="absolute inset-0 w-full h-full" aria-hidden="true">
-      {/* back rolling hills */}
+      {/* back hills */}
       <path d="M0,88 C180,50 360,78 540,60 C720,42 900,70 1080,52 C1260,34 1380,60 1440,54 L1440,190 L0,190 Z"
-        fill={backFill} />
+        fill={back} />
+      {/* road/path strip before the front ground */}
+      <path d="M0,143 C200,138 500,142 800,139 C1100,136 1300,140 1440,137 L1440,155 C1300,152 1100,153 800,154 C500,155 200,153 0,156 Z"
+        fill={road} />
+      {/* dashed centre line */}
+      {[0,120,240,360,480,600,720,840,960,1080,1200,1320].map((x, i) => (
+        <rect key={i} x={x + 5} y="148" width="72" height="2.5" rx="1.2" fill={line} />
+      ))}
       {/* front ground */}
-      <path d="M0,136 C120,120 280,146 440,134 C600,120 760,148 920,138 C1080,126 1260,146 1440,138 L1440,190 L0,190 Z"
-        fill={frontFill} />
+      <path d="M0,155 C120,148 280,162 440,152 C600,142 760,165 920,155 C1080,144 1260,162 1440,155 L1440,190 L0,190 Z"
+        fill={front} />
     </svg>
   )
 }
 
-/* ─── House silhouette (background depth) ──────────────────────────────────── */
+/* ─── House silhouette ──────────────────────────────────────────────────────── */
 function HouseSilhouette({ isDark }: { isDark: boolean }) {
-  const fill = isDark ? 'rgba(12,18,36,0.78)' : 'rgba(28,64,40,0.55)'
+  const fill   = isDark ? 'rgba(12,18,36,0.80)' : 'rgba(28,64,40,0.58)'
+  const winFill= isDark ? 'rgba(253,230,138,0.22)' : 'rgba(255,255,255,0.32)'
   return (
-    <div style={{ position: 'absolute', right: '16%', bottom: 92 }}>
-      <svg width="72" height="66" viewBox="0 0 72 66" aria-hidden="true">
-        {/* roof */}
-        <polygon points="0,30 36,0 72,30" fill={fill} />
-        {/* walls */}
-        <rect x="6" y="30" width="60" height="36" fill={fill} />
-        {/* door */}
-        <rect x="28" y="44" width="16" height="22" rx="2"
-          fill={isDark ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.22)'} />
-        {/* left window */}
-        <rect x="11" y="36" width="14" height="12" rx="1.5"
-          fill={isDark ? 'rgba(253,230,138,0.18)' : 'rgba(255,255,255,0.30)'} />
-        {/* right window */}
-        <rect x="47" y="36" width="14" height="12" rx="1.5"
-          fill={isDark ? 'rgba(253,230,138,0.18)' : 'rgba(255,255,255,0.30)'} />
-        {/* chimney */}
-        <rect x="48" y="8" width="10" height="24" fill={fill} />
+    <div style={{ position: 'absolute', right: '17%', bottom: 96 }}>
+      <svg width="80" height="72" viewBox="0 0 80 72" aria-hidden="true">
+        <polygon points="0,32 40,0 80,32" fill={fill} />
+        <rect x="6" y="32" width="68" height="40" fill={fill} />
+        <rect x="30" y="48" width="20" height="24" rx="2" fill={isDark ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.20)'} />
+        <rect x="9"  y="38" width="16" height="13" rx="1.5" fill={winFill} />
+        <rect x="55" y="38" width="16" height="13" rx="1.5" fill={winFill} />
+        <rect x="54" y="10" width="11" height="26" fill={fill} />
       </svg>
     </div>
   )
 }
 
-/* ─── Tree SVG shapes ───────────────────────────────────────────────────────── */
+/* ─── Tree shapes ───────────────────────────────────────────────────────────── */
 function PineTree({ fill, h = 52 }: { fill: string; h?: number }) {
   const w = h * 0.56
   return (
     <svg width={w} height={h + 10} viewBox={`0 0 ${w} ${h + 10}`} overflow="visible" aria-hidden="true">
-      <polygon points={`${w / 2},0 0,${h} ${w},${h}`} fill={fill} />
-      <rect x={w / 2 - 3} y={h} width="6" height="10" rx="1" fill={fill} opacity={0.60} />
+      <polygon points={`${w/2},0 0,${h} ${w},${h}`} fill={fill} />
+      <rect x={w/2 - 3} y={h} width="6" height="10" rx="1" fill={fill} opacity={0.60} />
     </svg>
   )
 }
-function RoundTree({ fill, h = 50 }: { fill: string; h?: number }) {
-  const r = h * 0.42
-  const cx = r * 1.3
+function RoundTree({ fill, h = 50, sway = false }: { fill: string; h?: number; sway?: boolean }) {
+  const r = h * 0.42; const cx = r * 1.3
+  const inner = (
+    <>
+      <circle cx={cx} cy={r} r={r} fill={fill} />
+      <rect x={cx-3.5} y={r*1.6} width="7" height={h - r*1.6 + 8} rx="1.5" fill={fill} opacity={0.55} />
+    </>
+  )
   return (
     <svg width={cx * 2} height={h + 10} viewBox={`0 0 ${cx * 2} ${h + 10}`} overflow="visible" aria-hidden="true">
-      <circle cx={cx} cy={r} r={r} fill={fill} />
-      <rect x={cx - 3.5} y={r * 1.6} width="7" height={h - r * 1.6 + 8} rx="1.5" fill={fill} opacity={0.55} />
+      {sway ? (
+        <motion.g style={{ transformOrigin: `${cx}px ${h + 5}px` }}
+          animate={{ rotate: [-2, 2, -2] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}>
+          {inner}
+        </motion.g>
+      ) : inner}
     </svg>
   )
 }
 
-/* ─── Tree placement layer ──────────────────────────────────────────────────── */
+/* ─── Tree layers ───────────────────────────────────────────────────────────── */
 function TreeLayer({ isDark }: { isDark: boolean }) {
   const fill = isDark ? 'rgba(14,26,50,0.92)' : 'rgba(18,78,42,0.86)'
-  const trees: { x: string; type: 'pine' | 'round'; sc: number; bot: number }[] = [
-    { x: '3%',  type: 'pine',  sc: 0.66, bot: 100 },
-    { x: '11%', type: 'round', sc: 0.80, bot: 96  },
-    { x: '22%', type: 'pine',  sc: 0.52, bot: 104 },
-    { x: '34%', type: 'round', sc: 0.86, bot: 94  },
-    { x: '48%', type: 'pine',  sc: 0.60, bot: 102 },
-    { x: '60%', type: 'round', sc: 0.76, bot: 98  },
-    { x: '73%', type: 'pine',  sc: 0.68, bot: 100 },
-    { x: '84%', type: 'round', sc: 0.56, bot: 104 },
-    { x: '93%', type: 'pine',  sc: 0.62, bot: 98  },
+  const trees: { x: string; t: 'p'|'r'; sc: number; bot: number; sw?: boolean }[] = [
+    { x: '3%',  t: 'p', sc: 0.62, bot: 100 },
+    { x: '10%', t: 'r', sc: 0.76, bot: 96, sw: true },
+    { x: '20%', t: 'p', sc: 0.50, bot: 104 },
+    { x: '33%', t: 'r', sc: 0.84, bot: 94, sw: true },
+    { x: '46%', t: 'p', sc: 0.58, bot: 102 },
+    { x: '59%', t: 'r', sc: 0.72, bot: 98, sw: true },
+    { x: '72%', t: 'p', sc: 0.66, bot: 100 },
+    { x: '83%', t: 'r', sc: 0.54, bot: 104, sw: true },
+    { x: '92%', t: 'p', sc: 0.60, bot: 98 },
   ]
   return (
     <>
       {trees.map((t, i) => (
-        <div key={i} style={{
-          position: 'absolute', left: t.x, bottom: t.bot,
-          transform: `scale(${t.sc})`, transformOrigin: 'bottom center',
-        }}>
-          {t.type === 'pine' ? <PineTree fill={fill} h={52} /> : <RoundTree fill={fill} h={50} />}
+        <div key={i} style={{ position: 'absolute', left: t.x, bottom: t.bot,
+          transform: `scale(${t.sc})`, transformOrigin: 'bottom center' }}>
+          {t.t === 'p' ? <PineTree fill={fill} h={52} /> : <RoundTree fill={fill} h={50} sway={t.sw} />}
         </div>
       ))}
     </>
   )
 }
 
-/* ─── Lottie character (when public/lottie/<condition>.json exists) ─────────── */
-const LottieCharacter = ({ condition }: { condition: SceneCondition }) => {
-  const anim = useLottieAnim(condition)
-
-  if (anim.status !== 'ready') return null   // unavailable → parent renders SVG fallback
-
-  return (
-    <motion.div
-      style={{ position: 'absolute', bottom: 44, width: 160, height: 160 }}
-      initial={{ x: '110vw' }}
-      animate={{ x: '-20vw' }}
-      transition={{ duration: 30, repeat: Infinity, ease: 'linear', delay: 2 }}
-    >
-      <Suspense fallback={null}>
-        <Lottie
-          animationData={anim.data}
-          loop
-          autoplay
-          style={{ width: '100%', height: '100%' }}
-          rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
-        />
-      </Suspense>
-    </motion.div>
-  )
-}
-
-/* ─── Illustrated SVG walking character (Samsung-style flat design) ─────────
-   Fallback used when no Lottie JSON is present in public/lottie/.
-   SVG viewBox="0 0 62 118" (1:1 px mapping), overflow=visible for umbrella.
-   motion.g groups keep shoes/hands anchored to rotating limbs.
-   ──────────────────────────────────────────────────────────────────────────── */
-function WalkingCharacter({ condition }: { condition: SceneCondition; isDark?: boolean }) {
-  const skinColor  = '#F5CBA7'
-  const hairColor  = '#2C1810'
-  const pantsColor = '#374151'
-  const shoeColor  = '#1F2937'
-  const jacketColor = jacketColorMap[condition]
-
-  const isRainy = ['rain', 'thunder', 'drizzle'].includes(condition)
-  const isSnowy = condition === 'snow'
-  const isClear = condition === 'clear'
-
-  const walkT = { duration: 0.70, repeat: Infinity, ease: 'easeInOut' as const }
-
-  /* Arms: pivot at shoulder joints (18, 34) and (44, 34) */
-  const leftArmRotate  = isRainy ? ([-6, -6, -6] as number[])  : ([-26, 20, -26] as number[])
-  const rightArmRotate = isRainy ? ([0,   0,   0] as number[]) : ([20, -26, 20]  as number[])
-
-  return (
-    <motion.div
-      style={{ position: 'absolute', bottom: 52, overflow: 'visible' }}
-      initial={{ x: '110vw' }}
-      animate={{ x: '-18vw' }}
-      transition={{ duration: 28, repeat: Infinity, ease: 'linear', delay: 4 }}
-    >
-      <svg width="62" height="118" viewBox="0 0 62 118" overflow="visible" aria-hidden="true">
-
-        {/* ── Umbrella (rain) ─────────────────────────────────────────────── */}
-        {isRainy && (
-          <g>
-            {/* canopy */}
-            <path d="M7,-44 Q31,-66 55,-44 Q55,-26 31,-28 Q7,-26 7,-44 Z"
-              fill="rgba(147,197,253,0.65)" stroke="#3B82F6" strokeWidth="2" />
-            {/* panel lines */}
-            <line x1="31" y1="-64" x2="31" y2="-28" stroke="rgba(59,130,246,0.40)" strokeWidth="1" />
-            <line x1="19" y1="-62" x2="16" y2="-28" stroke="rgba(59,130,246,0.30)" strokeWidth="1" />
-            <line x1="43" y1="-62" x2="46" y2="-28" stroke="rgba(59,130,246,0.30)" strokeWidth="1" />
-            {/* handle */}
-            <path d="M31,-28 L31,-2" stroke="#3B82F6" strokeWidth="2.2" strokeLinecap="round" />
-          </g>
-        )}
-
-        {/* ── Winter hat (snow) ───────────────────────────────────────────── */}
-        {isSnowy && (
-          <g>
-            <path d="M18,8 Q31,-8 44,8 L42,15 Q31,10 20,15 Z" fill="#F97316" />
-            <rect x="13" y="13" width="36" height="5" rx="2.5" fill="#EA580C" />
-            {/* pom-pom */}
-            <circle cx="31" cy="-6" r="5" fill="#FED7AA" />
-          </g>
-        )}
-
-        {/* ── Sun hat (clear) ─────────────────────────────────────────────── */}
-        {isClear && (
-          <g>
-            <ellipse cx="31" cy="7" rx="20" ry="5" fill="#D97706" opacity={0.92} />
-            <ellipse cx="31" cy="4" rx="11" ry="6.5" fill="#FBBF24" />
-          </g>
-        )}
-
-        {/* ── Head ────────────────────────────────────────────────────────── */}
-        <circle cx="31" cy="14" r="12" fill={skinColor} />
-
-        {/* hair */}
-        <path d="M19,10 Q23,1 31,1 Q39,1 43,10 Q39,5 31,4 Q23,5 19,10 Z" fill={hairColor} />
-
-        {/* eyes */}
-        <circle cx="26" cy="12" r="2" fill="#1F2937" />
-        <circle cx="36" cy="12" r="2" fill="#1F2937" />
-        {/* eye shine */}
-        <circle cx="27" cy="11" r="0.8" fill="white" opacity={0.8} />
-        <circle cx="37" cy="11" r="0.8" fill="white" opacity={0.8} />
-
-        {/* smile */}
-        <path d="M26,18 Q31,23 36,18" stroke="#B8702A" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-
-        {/* ── Body / jacket ───────────────────────────────────────────────── */}
-        <rect x="19" y="26" width="24" height="32" rx="5" fill={jacketColor} />
-        {/* collar */}
-        <path d="M23,26 L31,32 L39,26" fill="none"
-          stroke={`rgba(255,255,255,0.30)`} strokeWidth="1.5" strokeLinejoin="round" />
-        {/* zip / centre seam */}
-        <line x1="31" y1="32" x2="31" y2="57"
-          stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" strokeDasharray="2.5 2" />
-
-        {/* ── Left arm + hand ─────────────────────────────────────────────── */}
-        <motion.g style={{ transformOrigin: '19px 34px' }} animate={{ rotate: leftArmRotate }} transition={walkT}>
-          <line x1="19" y1="34" x2="8" y2="51"
-            stroke={jacketColor} strokeWidth="7" strokeLinecap="round" />
-          <circle cx="7" cy="54" r="4.5" fill={skinColor} />
-        </motion.g>
-
-        {/* ── Right arm + hand (raised if holding umbrella) ───────────────── */}
-        {isRainy ? (
-          /* Static raised arm holding umbrella handle */
-          <g>
-            <line x1="43" y1="34" x2="31" y2="4"
-              stroke={jacketColor} strokeWidth="7" strokeLinecap="round" />
-            <circle cx="31" cy="1" r="4.5" fill={skinColor} />
-          </g>
-        ) : (
-          <motion.g style={{ transformOrigin: '43px 34px' }} animate={{ rotate: rightArmRotate }} transition={walkT}>
-            <line x1="43" y1="34" x2="54" y2="51"
-              stroke={jacketColor} strokeWidth="7" strokeLinecap="round" />
-            <circle cx="55" cy="54" r="4.5" fill={skinColor} />
-          </motion.g>
-        )}
-
-        {/* ── Left leg + shoe ─────────────────────────────────────────────── */}
-        <motion.g style={{ transformOrigin: '25px 58px' }}
-          initial={{ rotate: -28 }}
-          animate={{ rotate: [-28, 28, -28] }}
-          transition={walkT}
-        >
-          <line x1="25" y1="58" x2="22" y2="94"
-            stroke={pantsColor} strokeWidth="9" strokeLinecap="round" />
-          {/* shoe */}
-          <ellipse cx="19" cy="98" rx="10" ry="5" fill={shoeColor} />
-          {/* shoe highlight */}
-          <ellipse cx="17" cy="96" rx="4" ry="2" fill="rgba(255,255,255,0.12)" />
-        </motion.g>
-
-        {/* ── Right leg + shoe ────────────────────────────────────────────── */}
-        <motion.g style={{ transformOrigin: '37px 58px' }}
-          initial={{ rotate: 28 }}
-          animate={{ rotate: [28, -28, 28] }}
-          transition={walkT}
-        >
-          <line x1="37" y1="58" x2="40" y2="94"
-            stroke={pantsColor} strokeWidth="9" strokeLinecap="round" />
-          {/* shoe */}
-          <ellipse cx="43" cy="98" rx="10" ry="5" fill={shoeColor} />
-          {/* shoe highlight */}
-          <ellipse cx="45" cy="96" rx="4" ry="2" fill="rgba(255,255,255,0.12)" />
-        </motion.g>
-
-      </svg>
-    </motion.div>
-  )
-}
-
-/* ─── Sun orb (clear + light mode) ─────────────────────────────────────────── */
-function SceneSun(_: { isDark?: boolean }) {
-  return (
-    <motion.div
-      style={{ position: 'absolute', right: '11%', bottom: 105, width: 54, height: 54 }}
-      animate={{ y: [-5, 5, -5] }}
-      transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}
-    >
-      <div style={{
-        width: '100%', height: '100%', borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(255,251,200,0.98) 0%, rgba(253,230,138,0.88) 50%, rgba(245,158,11,0.38) 100%)',
-        boxShadow: '0 0 30px rgba(245,158,11,0.62), 0 0 70px rgba(245,158,11,0.26)',
-        filter: 'blur(0.5px)',
-      }} />
-    </motion.div>
-  )
-}
-
-/* ─── Moon orb (clear + dark mode) ─────────────────────────────────────────── */
-function SceneMoon() {
-  return (
-    <motion.div
-      style={{ position: 'absolute', right: '12%', bottom: 108, width: 40, height: 40 }}
-      animate={{ y: [-4, 4, -4] }}
-      transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}
-    >
-      <div style={{
-        width: '100%', height: '100%', borderRadius: '50%',
-        background: 'radial-gradient(circle at 35% 35%, rgba(226,232,240,0.96) 0%, rgba(148,163,184,0.72) 70%, transparent 100%)',
-        boxShadow: '0 0 20px rgba(148,163,184,0.48), 0 0 44px rgba(148,163,184,0.18)',
-      }} />
-    </motion.div>
-  )
-}
-
-/* ─── Lightning bolt + flash (thunder) ─────────────────────────────────────── */
-function SceneLightning({ isDark }: { isDark: boolean }) {
-  const boltColor  = isDark ? '#FDE68A' : '#F59E0B'
-  const flashColor = isDark ? 'rgba(139,92,246,0.18)' : 'rgba(109,40,217,0.22)'
-
-  // keyframe times: two double-flashes per 7-second cycle
-  const flashTimes = [0, 0.26, 0.28, 0.30, 0.34, 0.58, 0.60, 0.62, 0.66, 1] as const
-  const flashOp    = [0, 0,    1,    0.4,  0,    0,    0.9,  0.3,  0,    0]
+/* ─── Foreground swaying grass blades ──────────────────────────────────────── */
+function ForegroundGrass({ isDark }: { isDark: boolean }) {
+  const grassColor = isDark ? 'rgba(20,40,70,0.75)' : 'rgba(22,101,52,0.70)'
+  const blades = useMemo(() =>
+    Array.from({ length: 28 }, (_, i) => ({
+      x: `${1 + (i / 28) * 98}%`,
+      h: 16 + (i % 5) * 4,
+      delay: (i * 0.18) % 2.8,
+      dur: 2.4 + (i % 4) * 0.5,
+      lean: (i % 2 === 0 ? 1 : -1) * (8 + (i % 3) * 4),
+    })), [])
 
   return (
     <>
-      {/* Scene-wide flash */}
-      <motion.div
-        className="absolute inset-0"
-        style={{ background: flashColor }}
-        animate={{ opacity: flashOp }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'linear', times: [...flashTimes] }}
-      />
-      {/* Bolt SVG */}
-      <motion.div
-        style={{ position: 'absolute', right: '30%', top: 8 }}
-        animate={{ opacity: flashOp }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'linear', times: [...flashTimes] }}
-      >
-        <svg width="22" height="52" viewBox="0 0 22 52" aria-hidden="true">
-          <path d="M14,0 L4,26 L10,26 L8,52 L20,20 L13,20 Z" fill={boltColor} />
-        </svg>
-      </motion.div>
-      {/* Second bolt, offset */}
-      <motion.div
-        style={{ position: 'absolute', right: '44%', top: 16 }}
-        animate={{ opacity: flashOp.slice().reverse() }}
-        transition={{ duration: 7, repeat: Infinity, ease: 'linear', times: [...flashTimes], delay: 0.8 }}
-      >
-        <svg width="16" height="38" viewBox="0 0 16 38" aria-hidden="true">
-          <path d="M10,0 L3,19 L7,19 L6,38 L14,14 L9,14 Z" fill={boltColor} opacity={0.75} />
-        </svg>
-      </motion.div>
-    </>
-  )
-}
-
-/* ─── In-scene rain drops ───────────────────────────────────────────────────── */
-function SceneRain({ heavy, isDark }: { heavy: boolean; isDark: boolean }) {
-  const count = heavy ? 24 : 15
-  const drops = useMemo(
-    () => Array.from({ length: count }, (_, i) => ({
-      id:      i,
-      left:    `${4 + (i / count) * 92}%`,
-      delay:   (i * 0.10) % 1.8,
-      dur:     heavy ? 0.34 + (i % 4) * 0.04 : 0.50 + (i % 4) * 0.06,
-      height:  heavy ? 18 + (i % 6) * 2 : 12 + (i % 5) * 2,
-      opacity: isDark ? 0.48 + (i % 3) * 0.16 : 0.64 + (i % 3) * 0.14,
-    })),
-    [heavy, isDark, count]
-  )
-  const grad = isDark
-    ? 'linear-gradient(to bottom, rgba(147,197,253,0.92), rgba(147,197,253,0))'
-    : 'linear-gradient(to bottom, rgba(30,64,138,0.85), rgba(30,64,138,0))'
-  return (
-    <>
-      {drops.map((d) => (
-        <motion.div key={d.id} className="absolute w-px rounded-full"
-          style={{ left: d.left, top: 0, height: d.height, background: grad, opacity: d.opacity }}
-          animate={{ y: '200px' }}
-          transition={{ duration: d.dur, delay: d.delay, repeat: Infinity, ease: 'linear' }}
+      {blades.map((b, i) => (
+        <motion.div key={i} style={{
+          position: 'absolute', left: b.x, bottom: 2,
+          width: 3, height: b.h,
+          background: `linear-gradient(to top, ${grassColor}, transparent)`,
+          borderRadius: '2px 2px 0 0',
+          transformOrigin: 'bottom center',
+        }}
+          animate={{ rotate: [0, b.lean, 0] }}
+          transition={{ duration: b.dur, delay: b.delay, repeat: Infinity, ease: 'easeInOut' }}
         />
       ))}
     </>
   )
 }
 
-/* ─── In-scene snow ─────────────────────────────────────────────────────────── */
-function SceneSnow({ isDark }: { isDark: boolean }) {
-  const flakes = useMemo(
-    () => Array.from({ length: 18 }, (_, i) => ({
-      id:      i,
-      left:    `${(i / 18) * 100}%`,
-      size:    2.5 + (i % 4),
-      delay:   (i * 0.19) % 3.2,
-      dur:     2.0 + (i % 5) * 0.38,
-      opacity: isDark ? 0.60 + (i % 3) * 0.16 : 0.52 + (i % 3) * 0.14,
-    })),
-    [isDark]
+/* ─── Rain puddle ripples ───────────────────────────────────────────────────── */
+function RainPuddles({ isDark }: { isDark: boolean }) {
+  const puddles = useMemo(() =>
+    Array.from({ length: 6 }, (_, i) => ({
+      left: `${10 + i * 14}%`,
+      delay: i * 0.55,
+      dur: 1.8 + (i % 3) * 0.3,
+    })), [])
+  const ringColor = isDark ? 'rgba(147,197,253,0.40)' : 'rgba(30,64,138,0.35)'
+  return (
+    <>
+      {puddles.map((p, i) => (
+        <motion.div key={i} style={{
+          position: 'absolute', left: p.left, bottom: 16,
+          width: 24, height: 8, borderRadius: '50%',
+          border: `1.5px solid ${ringColor}`,
+          transformOrigin: 'center',
+        }}
+          animate={{ scaleX: [0.2, 2.2], scaleY: [0.5, 0.3], opacity: [0.8, 0] }}
+          transition={{ duration: p.dur, delay: p.delay, repeat: Infinity, ease: 'easeOut' }}
+        />
+      ))}
+    </>
   )
+}
+
+/* ─── Sunny ground shimmer ──────────────────────────────────────────────────── */
+function SunShimmer({ isDark }: { isDark: boolean }) {
+  if (isDark) return null
+  return (
+    <div style={{ position: 'absolute', bottom: 16, left: '10%', right: '10%', height: 4,
+      background: 'linear-gradient(to right, transparent, rgba(253,230,138,0.55), transparent)',
+      borderRadius: 4 }}>
+      <motion.div className="absolute inset-0 rounded"
+        style={{ background: 'linear-gradient(to right, transparent, rgba(253,230,138,0.80), transparent)' }}
+        animate={{ opacity: [0, 1, 0] }}
+        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+      />
+    </div>
+  )
+}
+
+/* ─── Distant silhouette character (parallax depth) ────────────────────────── */
+function DistantCharacter({ isDark }: { isDark: boolean }) {
+  const col = isDark ? 'rgba(30,50,80,0.55)' : 'rgba(20,60,35,0.45)'
+  return (
+    <motion.div style={{ position: 'absolute', bottom: 62 }}
+      initial={{ x: '105vw' }}
+      animate={{ x: '-12vw' }}
+      transition={{ duration: 44, repeat: Infinity, ease: 'linear', delay: 8 }}
+    >
+      {/* tiny silhouette — no detail, just depth */}
+      <svg width="28" height="52" viewBox="0 0 28 52" aria-hidden="true">
+        <circle cx="14" cy="7" r="6" fill={col} />
+        <rect x="10" y="13" width="8" height="18" rx="3" fill={col} />
+        <motion.line x1="10" y1="18" x2="4" y2="26" stroke={col} strokeWidth="3" strokeLinecap="round"
+          style={{ transformOrigin: '10px 18px' }} animate={{ rotate: [-22, 18, -22] }}
+          transition={{ duration: 0.65, repeat: Infinity, ease: 'easeInOut' }} />
+        <motion.line x1="18" y1="18" x2="24" y2="26" stroke={col} strokeWidth="3" strokeLinecap="round"
+          style={{ transformOrigin: '18px 18px' }} animate={{ rotate: [18, -22, 18] }}
+          transition={{ duration: 0.65, repeat: Infinity, ease: 'easeInOut' }} />
+        <motion.g style={{ transformOrigin: '11px 31px' }} animate={{ rotate: [-26, 26, -26] }}
+          transition={{ duration: 0.65, repeat: Infinity, ease: 'easeInOut' }}>
+          <line x1="11" y1="31" x2="9" y2="48" stroke={col} strokeWidth="4" strokeLinecap="round" />
+        </motion.g>
+        <motion.g style={{ transformOrigin: '17px 31px' }} animate={{ rotate: [26, -26, 26] }}
+          transition={{ duration: 0.65, repeat: Infinity, ease: 'easeInOut' }}>
+          <line x1="17" y1="31" x2="19" y2="48" stroke={col} strokeWidth="4" strokeLinecap="round" />
+        </motion.g>
+      </svg>
+    </motion.div>
+  )
+}
+
+/* ─── Main walking character — 100px wide, detailed flat design ─────────────── */
+function WalkingCharacter({ condition }: { condition: SceneCondition }) {
+  const skin  = '#F5CBA7'
+  const hair  = '#2C1810'
+  const pants = '#374151'
+  const shoe  = '#1F2937'
+  const jacket = JACKET[condition]
+
+  const isRainy   = ['rain', 'thunder', 'drizzle'].includes(condition)
+  const isSnowy   = condition === 'snow'
+  const isClear   = condition === 'clear'
+  const isWindy   = condition === 'mist' || condition === 'cloudy'
+
+  const wt = { duration: 0.68, repeat: Infinity, ease: 'easeInOut' as const }
+
+  return (
+    <motion.div
+      style={{ position: 'absolute', bottom: 50, overflow: 'visible' }}
+      initial={{ x: '112vw' }}
+      animate={{ x: '-22vw' }}
+      transition={{ duration: 30, repeat: Infinity, ease: 'linear', delay: 3 }}
+    >
+      <svg width="100" height="190" viewBox="0 0 100 190" overflow="visible" aria-hidden="true">
+
+        {/* ── Umbrella ─── */}
+        {isRainy && (
+          <g>
+            <path d="M12,-58 Q50,-88 88,-58 Q88,-36 50,-40 Q12,-36 12,-58 Z"
+              fill="rgba(147,197,253,0.68)" stroke="#3B82F6" strokeWidth="2.5" />
+            <line x1="50" y1="-38" x2="50" y2="-2" stroke="#3B82F6" strokeWidth="3" strokeLinecap="round" />
+            <line x1="50" y1="-84" x2="50" y2="-40" stroke="rgba(59,130,246,0.35)" strokeWidth="1.2" />
+            <line x1="31" y1="-80" x2="25" y2="-40" stroke="rgba(59,130,246,0.25)" strokeWidth="1.2" />
+            <line x1="69" y1="-80" x2="75" y2="-40" stroke="rgba(59,130,246,0.25)" strokeWidth="1.2" />
+          </g>
+        )}
+
+        {/* ── Winter hat ─── */}
+        {isSnowy && (
+          <g>
+            <path d="M30,14 Q50,-6 70,14 L67,22 Q50,16 33,22 Z" fill="#F97316" />
+            <rect x="22" y="20" width="56" height="7" rx="3.5" fill="#EA580C" />
+            <circle cx="50" cy="-2" r="8" fill="#FED7AA" />
+          </g>
+        )}
+
+        {/* ── Sun hat ─── */}
+        {isClear && (
+          <g>
+            <ellipse cx="50" cy="12" rx="32" ry="7" fill="#D97706" opacity={0.90} />
+            <ellipse cx="50" cy="8"  rx="18" ry="10" fill="#FBBF24" />
+          </g>
+        )}
+
+        {/* ── Hood-up for mist/cloudy ─── */}
+        {isWindy && (
+          <path d="M28,24 Q18,10 50,6 Q82,10 72,24 Q66,18 50,16 Q34,18 28,24 Z"
+            fill={jacket} opacity={0.75} />
+        )}
+
+        {/* ── Head ─── */}
+        <circle cx="50" cy="24" r="18" fill={skin} />
+
+        {/* hair */}
+        <path d="M32,18 Q36,4 50,4 Q64,4 68,18 Q62,10 50,8 Q38,10 32,18 Z" fill={hair} />
+
+        {/* ears */}
+        <ellipse cx="32" cy="24" rx="4.5" ry="5.5" fill={skin} />
+        <ellipse cx="68" cy="24" rx="4.5" ry="5.5" fill={skin} />
+
+        {/* eyes */}
+        <circle cx="42" cy="21" r="3"   fill="#1F2937" />
+        <circle cx="58" cy="21" r="3"   fill="#1F2937" />
+        <circle cx="43" cy="20" r="1.2" fill="white" opacity={0.85} />
+        <circle cx="59" cy="20" r="1.2" fill="white" opacity={0.85} />
+
+        {/* eyebrows */}
+        <path d="M38,16 Q42,14 46,15" stroke="#2C1810" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        <path d="M54,15 Q58,14 62,16" stroke="#2C1810" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+
+        {/* smile */}
+        <path d="M43,29 Q50,35 57,29" stroke="#B8702A" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+
+        {/* ── Body / jacket ─── */}
+        <rect x="32" y="42" width="36" height="46" rx="7" fill={jacket} />
+        {/* collar V */}
+        <path d="M38,42 L50,52 L62,42" fill="none"
+          stroke="rgba(255,255,255,0.28)" strokeWidth="2" strokeLinejoin="round" />
+        {/* zip seam */}
+        <line x1="50" y1="52" x2="50" y2="87"
+          stroke="rgba(255,255,255,0.16)" strokeWidth="2" strokeDasharray="3.5 2.5" />
+
+        {/* ── Left arm + hand ─── */}
+        <motion.g style={{ transformOrigin: '32px 54px' }}
+          animate={{ rotate: isRainy ? [-6,-6,-6] : [-24, 18, -24] }} transition={wt}>
+          <line x1="32" y1="54" x2="14" y2="76"
+            stroke={jacket} strokeWidth="11" strokeLinecap="round" />
+          <circle cx="13" cy="79" r="7" fill={skin} />
+        </motion.g>
+
+        {/* ── Right arm + hand (raised for umbrella) ─── */}
+        {isRainy ? (
+          <g>
+            <line x1="68" y1="54" x2="50" y2="6"
+              stroke={jacket} strokeWidth="11" strokeLinecap="round" />
+            <circle cx="50" cy="3" r="7" fill={skin} />
+          </g>
+        ) : (
+          <motion.g style={{ transformOrigin: '68px 54px' }}
+            animate={{ rotate: [18, -24, 18] }} transition={wt}>
+            <line x1="68" y1="54" x2="86" y2="76"
+              stroke={jacket} strokeWidth="11" strokeLinecap="round" />
+            <circle cx="87" cy="79" r="7" fill={skin} />
+          </motion.g>
+        )}
+
+        {/* ── Left leg + shoe ─── */}
+        <motion.g style={{ transformOrigin: '40px 88px' }}
+          initial={{ rotate: -28 }}
+          animate={{ rotate: [-28, 28, -28] }} transition={wt}>
+          <line x1="40" y1="88" x2="35" y2="144"
+            stroke={pants} strokeWidth="13" strokeLinecap="round" />
+          <ellipse cx="31" cy="150" rx="15" ry="7" fill={shoe} />
+          <ellipse cx="28" cy="147" rx="6"  ry="3" fill="rgba(255,255,255,0.12)" />
+        </motion.g>
+
+        {/* ── Right leg + shoe ─── */}
+        <motion.g style={{ transformOrigin: '60px 88px' }}
+          initial={{ rotate: 28 }}
+          animate={{ rotate: [28, -28, 28] }} transition={wt}>
+          <line x1="60" y1="88" x2="65" y2="144"
+            stroke={pants} strokeWidth="13" strokeLinecap="round" />
+          <ellipse cx="69" cy="150" rx="15" ry="7" fill={shoe} />
+          <ellipse cx="72" cy="147" rx="6"  ry="3" fill="rgba(255,255,255,0.12)" />
+        </motion.g>
+
+        {/* ── Ground shadow ─── */}
+        <motion.ellipse cx="50" cy="164" rx="26" ry="5"
+          fill="rgba(0,0,0,0.20)"
+          animate={{ scaleX: [1, 0.85, 1] }}
+          transition={{ duration: 0.68, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </svg>
+    </motion.div>
+  )
+}
+
+/* ─── Celestial bodies ──────────────────────────────────────────────────────── */
+function SceneSun() {
+  return (
+    <motion.div style={{ position: 'absolute', right: '11%', bottom: 110, width: 56, height: 56 }}
+      animate={{ y: [-5, 5, -5] }} transition={{ duration: 4.5, repeat: Infinity, ease: 'easeInOut' }}>
+      <div style={{
+        width: '100%', height: '100%', borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(255,251,200,0.98) 0%, rgba(253,230,138,0.88) 50%, rgba(245,158,11,0.38) 100%)',
+        boxShadow: '0 0 32px rgba(245,158,11,0.65), 0 0 72px rgba(245,158,11,0.28)',
+        filter: 'blur(0.5px)',
+      }} />
+    </motion.div>
+  )
+}
+function SceneMoon() {
+  return (
+    <motion.div style={{ position: 'absolute', right: '12%', bottom: 112, width: 42, height: 42 }}
+      animate={{ y: [-4, 4, -4] }} transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut' }}>
+      <div style={{
+        width: '100%', height: '100%', borderRadius: '50%',
+        background: 'radial-gradient(circle at 35% 35%, rgba(226,232,240,0.96) 0%, rgba(148,163,184,0.72) 70%, transparent 100%)',
+        boxShadow: '0 0 20px rgba(148,163,184,0.50), 0 0 46px rgba(148,163,184,0.20)',
+      }} />
+    </motion.div>
+  )
+}
+
+/* ─── Lightning + flash (thunder) ───────────────────────────────────────────── */
+function SceneLightning({ isDark }: { isDark: boolean }) {
+  const bolt  = isDark ? '#FDE68A' : '#F59E0B'
+  const flash = isDark ? 'rgba(139,92,246,0.18)' : 'rgba(109,40,217,0.22)'
+  const times = [0, 0.26, 0.28, 0.30, 0.34, 0.58, 0.60, 0.62, 0.66, 1] as const
+  const op    = [0, 0, 1, 0.4, 0, 0, 0.9, 0.3, 0, 0]
+  return (
+    <>
+      <motion.div className="absolute inset-0" style={{ background: flash }}
+        animate={{ opacity: op }} transition={{ duration: 7, repeat: Infinity, ease: 'linear', times: [...times] }} />
+      <motion.div style={{ position: 'absolute', right: '30%', top: 8 }}
+        animate={{ opacity: op }} transition={{ duration: 7, repeat: Infinity, ease: 'linear', times: [...times] }}>
+        <svg width="24" height="56" viewBox="0 0 24 56" aria-hidden="true">
+          <path d="M15,0 L4,28 L11,28 L9,56 L22,21 L14,21 Z" fill={bolt} />
+        </svg>
+      </motion.div>
+      <motion.div style={{ position: 'absolute', right: '46%', top: 18 }}
+        animate={{ opacity: op.slice().reverse() }}
+        transition={{ duration: 7, repeat: Infinity, ease: 'linear', times: [...times], delay: 0.8 }}>
+        <svg width="17" height="40" viewBox="0 0 17 40" aria-hidden="true">
+          <path d="M11,0 L3,20 L8,20 L6,40 L15,14 L9,14 Z" fill={bolt} opacity={0.75} />
+        </svg>
+      </motion.div>
+    </>
+  )
+}
+
+/* ─── Angled rain drops ─────────────────────────────────────────────────────── */
+function SceneRain({ heavy, isDark }: { heavy: boolean; isDark: boolean }) {
+  const count = heavy ? 26 : 16
+  const drops = useMemo(() =>
+    Array.from({ length: count }, (_, i) => ({
+      id: i, left: `${-2 + (i / count) * 106}%`,
+      delay: (i * 0.10) % 1.8,
+      dur: heavy ? 0.36 + (i % 4) * 0.04 : 0.52 + (i % 4) * 0.06,
+      height: heavy ? 20 + (i % 6) * 3 : 14 + (i % 5) * 2,
+      opacity: isDark ? 0.48 + (i % 3) * 0.16 : 0.65 + (i % 3) * 0.14,
+    })), [heavy, isDark, count])
+  const grad = isDark
+    ? 'linear-gradient(to bottom, rgba(147,197,253,0.92), rgba(147,197,253,0))'
+    : 'linear-gradient(to bottom, rgba(30,64,138,0.85), rgba(30,64,138,0))'
+  return (
+    <div style={{ transform: `skewX(${heavy ? -14 : -8}deg)`, position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      {drops.map((d) => (
+        <motion.div key={d.id} className="absolute rounded-full"
+          style={{ left: d.left, top: 0, height: d.height, width: heavy ? 1.5 : 1, background: grad, opacity: d.opacity }}
+          animate={{ y: '200px' }}
+          transition={{ duration: d.dur, delay: d.delay, repeat: Infinity, ease: 'linear' }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/* ─── Snow ──────────────────────────────────────────────────────────────────── */
+function SceneSnow({ isDark }: { isDark: boolean }) {
+  const flakes = useMemo(() =>
+    Array.from({ length: 18 }, (_, i) => ({
+      id: i, left: `${(i / 18) * 100}%`, size: 2.5 + (i % 4),
+      delay: (i * 0.19) % 3.2, dur: 2.0 + (i % 5) * 0.38,
+      opacity: isDark ? 0.60 + (i % 3) * 0.16 : 0.52 + (i % 3) * 0.14,
+    })), [isDark])
   return (
     <>
       {flakes.map((f) => (
@@ -432,7 +488,7 @@ function SceneSnow({ isDark }: { isDark: boolean }) {
   )
 }
 
-/* ─── Mist wisps ────────────────────────────────────────────────────────────── */
+/* ─── Mist ──────────────────────────────────────────────────────────────────── */
 function SceneMist({ isDark }: { isDark: boolean }) {
   return (
     <>
@@ -450,19 +506,6 @@ function SceneMist({ isDark }: { isDark: boolean }) {
   )
 }
 
-/* ─── Character switcher: Lottie (preferred) → SVG fallback ────────────────── */
-function CharacterLayer({ condition, isDark }: { condition: SceneCondition; isDark: boolean }) {
-  const lottie = useLottieAnim(condition)
-
-  // Lottie file found → use it
-  if (lottie.status === 'ready') {
-    return <LottieCharacter condition={condition} />
-  }
-
-  // Lottie loading or unavailable → always render SVG (no flash)
-  return <WalkingCharacter condition={condition} isDark={isDark} />
-}
-
 /* ─── Main export ───────────────────────────────────────────────────────────── */
 export function LandscapeScene({ conditionId, isDark }: LandscapeSceneProps) {
   const prefersReducedMotion = useReducedMotion()
@@ -474,38 +517,45 @@ export function LandscapeScene({ conditionId, isDark }: LandscapeSceneProps) {
   const hasSnow    = condition === 'snow'
   const hasMist    = condition === 'mist'
   const isClear    = condition === 'clear'
+  const hasPuddles = hasRain
 
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 overflow-hidden pointer-events-none"
-      style={{ height: 190, zIndex: 2 }}
-      aria-hidden="true"
-    >
-      {/* Top-edge fade — blends scene into page content above */}
+    <div className="fixed bottom-0 left-0 right-0 overflow-hidden pointer-events-none"
+      style={{ height: 196, zIndex: 2 }} aria-hidden="true">
+
+      {/* Top edge fade */}
       <div className="absolute inset-x-0 top-0 z-10" style={{
-        height: 58,
+        height: 60,
         background: isDark
           ? 'linear-gradient(to bottom, #000000 0%, transparent 100%)'
           : 'linear-gradient(to bottom, #5AAED4 0%, transparent 100%)',
       }} />
 
-      {/* ── Condition FX ── */}
+      {/* Condition FX (below ground level, full height) */}
       {hasRain    && <SceneRain heavy={hasThunder} isDark={isDark} />}
       {hasThunder && <SceneLightning isDark={isDark} />}
       {hasSnow    && <SceneSnow isDark={isDark} />}
       {hasMist    && <SceneMist isDark={isDark} />}
 
-      {/* ── Celestial bodies ── */}
+      {/* Celestial */}
       {isClear && isDark  && <SceneMoon />}
       {isClear && !isDark && <SceneSun />}
 
-      {/* ── Background layers (trees → house → hills) ── */}
+      {/* Environment */}
       <TreeLayer isDark={isDark} />
       <HouseSilhouette isDark={isDark} />
       <GroundLayer isDark={isDark} />
 
-      {/* ── Character: Lottie when JSON present, SVG fallback otherwise ── */}
-      <CharacterLayer condition={condition} isDark={isDark} />
+      {/* Ground-level details */}
+      {hasPuddles && <RainPuddles isDark={isDark} />}
+      {isClear    && <SunShimmer isDark={isDark} />}
+
+      {/* Characters */}
+      <DistantCharacter isDark={isDark} />
+      <WalkingCharacter condition={condition} />
+
+      {/* Foreground grass (on top of everything for depth) */}
+      <ForegroundGrass isDark={isDark} />
     </div>
   )
 }
