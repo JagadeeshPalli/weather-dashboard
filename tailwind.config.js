@@ -8,13 +8,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        'bg-primary': '#000000',
-        'bg-secondary': '#0A0E27',
-        'accent-blue': '#1E40AF',
-        'accent-sky': '#3B82F6',
+        // Theme-aware text tokens — flip via CSS vars between dark/light
+        'fg':       'var(--text-primary)',
+        'dim':      'var(--text-muted)',
+        'faint':    '#64748B',
+        // Theme-aware surface tokens
+        'skeleton': 'var(--skeleton-bg)',
+        // Accent colours — fixed, never change with theme
+        'accent-blue':  '#1E40AF',
+        'accent-sky':   '#3B82F6',
         'accent-amber': '#F59E0B',
-        'text-primary': '#F1F5F9',
-        'text-muted': '#94A3B8',
       },
       fontFamily: {
         'code': ['Fira Code', 'monospace'],
@@ -24,15 +27,15 @@ export default {
         'glass': '15px',
       },
       boxShadow: {
-        'glass': '0 8px 32px rgba(0, 0, 0, 0.37)',
-        'glow-blue': '0 0 20px rgba(59, 130, 246, 0.3)',
+        'glass':      '0 8px 32px rgba(0, 0, 0, 0.37)',
+        'glow-blue':  '0 0 20px rgba(59, 130, 246, 0.3)',
         'glow-amber': '0 0 20px rgba(245, 158, 11, 0.3)',
       },
       keyframes: {
         blob: {
-          '0%': { transform: 'translate(0px, 0px) scale(1)' },
-          '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-          '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+          '0%':   { transform: 'translate(0px, 0px) scale(1)' },
+          '33%':  { transform: 'translate(30px, -50px) scale(1.1)' },
+          '66%':  { transform: 'translate(-20px, 20px) scale(0.9)' },
           '100%': { transform: 'translate(0px, 0px) scale(1)' },
         },
       },

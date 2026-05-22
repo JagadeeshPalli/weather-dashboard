@@ -22,17 +22,15 @@ function StatCard({ icon, label, value, index, bar }: StatCardProps) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.07, duration: 0.4, ease: 'easeOut' }}
-      className="glass-card flex flex-col gap-3 hover:border-[rgba(255,255,255,0.22)] transition-colors"
+      className="glass-card flex flex-col gap-3"
     >
       <div className="flex items-center justify-between">
-        <span className="font-sans text-[10px] text-[#94A3B8] uppercase tracking-widest">
-          {label}
-        </span>
+        <span className="font-sans text-[10px] text-dim uppercase tracking-widest">{label}</span>
         {icon}
       </div>
-      <p className="font-code text-xl font-semibold text-[#F1F5F9]">{value}</p>
+      <p className="font-code text-xl font-semibold text-fg">{value}</p>
       {bar !== undefined && (
-        <div className="h-1 rounded-full bg-[rgba(255,255,255,0.06)] overflow-hidden">
+        <div className="h-1 rounded-full bg-[rgba(128,128,128,0.15)] overflow-hidden">
           <motion.div
             className="h-full rounded-full bg-[#3B82F6]"
             initial={{ width: 0 }}
@@ -63,7 +61,7 @@ export function WeatherDetails({ data, unit }: WeatherDetailsProps) {
       index: 0,
     },
     {
-      icon: <Wind className="w-4 h-4 text-[#94A3B8]" />,
+      icon: <Wind className="w-4 h-4 text-dim" />,
       label: 'Wind Speed',
       value: `${data.wind.speed.toFixed(1)} ${speedUnit}`,
       index: 1,
@@ -82,7 +80,7 @@ export function WeatherDetails({ data, unit }: WeatherDetailsProps) {
       index: 3,
     },
     {
-      icon: <Cloud className="w-4 h-4 text-[#94A3B8]" />,
+      icon: <Cloud className="w-4 h-4 text-dim" />,
       label: 'Cloud Cover',
       value: `${data.clouds.all}%`,
       bar: data.clouds.all,

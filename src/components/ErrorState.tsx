@@ -20,13 +20,13 @@ export function ErrorState({ message, onRetry }: ErrorStateProps) {
       >
         <AlertCircle className="w-10 h-10 text-red-400" />
       </motion.div>
-      <p className="font-sans text-[#94A3B8] text-sm max-w-xs leading-relaxed">{message}</p>
+      <p className="font-sans text-dim text-sm max-w-xs leading-relaxed">{message}</p>
       {onRetry && (
         <motion.button
           onClick={onRetry}
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.96 }}
-          className="flex items-center gap-2 font-code text-xs px-4 py-2 rounded-lg border border-[rgba(255,255,255,0.15)] text-[#3B82F6] hover:bg-[rgba(255,255,255,0.06)] transition-colors"
+          className="flex items-center gap-2 font-code text-xs px-4 py-2 rounded-lg border border-[rgba(128,128,128,0.2)] text-[#3B82F6] hover:bg-[rgba(128,128,128,0.08)] transition-colors"
         >
           <RefreshCw className="w-3.5 h-3.5" />
           Try again

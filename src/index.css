@@ -2,30 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── DARK theme (default) ──────────────────────────────────────────────── */
 :root {
-  --bg-primary: #000000;
-  --bg-secondary: #0A0E27;
-  --glass-bg: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.15);
-  --blur: 15px;
-  --accent-blue: #1E40AF;
-  --accent-sky: #3B82F6;
-  --accent-amber: #F59E0B;
-  --text-primary: #F1F5F9;
-  --text-muted: #94A3B8;
-  --space-xs: 4px;
-  --space-sm: 8px;
-  --space-md: 16px;
-  --space-lg: 24px;
-  --space-xl: 32px;
+  --bg-primary:    #000000;
+  --bg-secondary:  #0A0E27;
+  --glass-bg:      rgba(255, 255, 255, 0.08);
+  --glass-border:  rgba(255, 255, 255, 0.15);
+  --glass-hover:   rgba(255, 255, 255, 0.25);
+  --blur:          15px;
+  --text-primary:  #F1F5F9;
+  --text-muted:    #94A3B8;
+  --skeleton-bg:   rgba(255, 255, 255, 0.07);
+
+  --accent-blue:   #1E40AF;
+  --accent-sky:    #3B82F6;
+  --accent-amber:  #F59E0B;
+
+  --blob-1: #1E40AF;
+  --blob-2: #3B82F6;
+  --blob-3: #0A0E27;
+
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
   --space-2xl: 48px;
   --space-3xl: 64px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
 }
 
+/* ─── LIGHT theme ───────────────────────────────────────────────────────── */
+html.light {
+  --bg-primary:    #F0F4FF;
+  --bg-secondary:  #E2E8F0;
+  --glass-bg:      rgba(255, 255, 255, 0.65);
+  --glass-border:  rgba(15, 23, 42, 0.12);
+  --glass-hover:   rgba(15, 23, 42, 0.2);
+  --text-primary:  #0F172A;
+  --text-muted:    #475569;
+  --skeleton-bg:   rgba(15, 23, 42, 0.07);
+
+  --blob-1: #BFDBFE;
+  --blob-2: #93C5FD;
+  --blob-3: #E0E7FF;
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────────── */
 * {
   margin: 0;
   padding: 0;
@@ -42,8 +64,10 @@ body {
   font-family: 'Fira Sans', sans-serif;
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background-color 300ms ease, color 300ms ease;
 }
 
+/* ─── Glass utilities ───────────────────────────────────────────────────── */
 @layer components {
   .glass {
     background: var(--glass-bg);
@@ -51,6 +75,7 @@ body {
     -webkit-backdrop-filter: blur(var(--blur));
     border: 1px solid var(--glass-border);
     border-radius: 16px;
+    transition: background 300ms ease, border-color 300ms ease;
   }
 
   .glass-card {
@@ -60,12 +85,12 @@ body {
     border: 1px solid var(--glass-border);
     border-radius: 12px;
     padding: var(--space-lg);
-    transition: all 200ms ease;
+    transition: background 300ms ease, border-color 200ms ease, box-shadow 200ms ease;
   }
 
   .glass-card:hover {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
-    border-color: rgba(255, 255, 255, 0.25);
+    border-color: var(--glass-hover);
   }
 
   .font-code {
@@ -73,6 +98,7 @@ body {
   }
 }
 
+/* ─── Reduced motion ────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,

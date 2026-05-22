@@ -76,29 +76,25 @@ export function SearchBar({ onSelect }: SearchBarProps) {
 
   return (
     <div ref={containerRef} className="relative w-full max-w-xl">
-      {/* Search input */}
       <div className="glass-card py-0 flex items-center gap-3 px-4 h-14">
         {searching ? (
           <Loader2 className="w-5 h-5 text-[#3B82F6] animate-spin shrink-0" />
         ) : (
-          <Search className="w-5 h-5 text-[#94A3B8] shrink-0" />
+          <Search className="w-5 h-5 text-dim shrink-0" />
         )}
         <input
           type="text"
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value)
-            setSearchError(null)
-          }}
+          onChange={(e) => { setQuery(e.target.value); setSearchError(null) }}
           onFocus={() => results.length > 0 && setOpen(true)}
           placeholder="Search for a city…"
-          className="flex-1 bg-transparent font-sans text-[#F1F5F9] placeholder:text-[#94A3B8] text-base focus:outline-none"
+          className="flex-1 bg-transparent font-sans text-fg placeholder:text-dim text-base focus:outline-none"
         />
         <button
           onClick={geo.detect}
           disabled={geo.loading}
           title="Use my location"
-          className="shrink-0 p-1 text-[#94A3B8] hover:text-[#3B82F6] transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] rounded"
+          className="shrink-0 p-1 text-dim hover:text-[#3B82F6] transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6] rounded"
         >
           {geo.loading
             ? <Loader2 className="w-4 h-4 animate-spin" />
@@ -107,9 +103,8 @@ export function SearchBar({ onSelect }: SearchBarProps) {
         </button>
       </div>
 
-      {/* Inline error below search bar */}
       <AnimatePresence>
-        {(searchError || geoError) && (
+        {(searchError ?? geoError) && (
           <motion.div
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
@@ -125,7 +120,6 @@ export function SearchBar({ onSelect }: SearchBarProps) {
         )}
       </AnimatePresence>
 
-      {/* Autocomplete dropdown */}
       <AnimatePresence>
         {open && (
           <motion.ul
@@ -145,13 +139,13 @@ export function SearchBar({ onSelect }: SearchBarProps) {
                 onClick={() => handleSelect(city)}
                 role="option"
                 aria-selected={false}
-                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[rgba(255,255,255,0.06)] transition-colors"
+                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[rgba(128,128,128,0.08)] transition-colors"
               >
                 <MapPin className="w-4 h-4 text-[#3B82F6] shrink-0" />
-                <span className="font-sans text-[#F1F5F9] text-sm">
+                <span className="font-sans text-fg text-sm">
                   {city.name}
-                  {city.state && <span className="text-[#94A3B8]">, {city.state}</span>}
-                  <span className="text-[#94A3B8]">, {city.country}</span>
+                  {city.state && <span className="text-dim">, {city.state}</span>}
+                  <span className="text-dim">, {city.country}</span>
                 </span>
               </motion.li>
             ))}
