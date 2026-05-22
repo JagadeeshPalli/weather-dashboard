@@ -9,6 +9,7 @@ import { SkeletonHero, SkeletonDetails } from './components/SkeletonCard'
 import { ErrorState } from './components/ErrorState'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { WeatherBackground } from './components/WeatherBackground'
+import { LandscapeScene } from './components/LandscapeScene'
 import { useWeatherData } from './hooks/useWeatherData'
 import { hasApiKey } from './services/weatherApi'
 import type { UnitSystem } from './types/weather'
@@ -105,6 +106,11 @@ function App() {
         <WeatherBackground conditionId={current.weather[0].id} isDark={isDark} />
       )}
 
+      {/* ── Samsung-style landscape scene (bottom of screen) ────────────── */}
+      {!loading && !error && current && (
+        <LandscapeScene conditionId={current.weather[0].id} isDark={isDark} />
+      )}
+
       {/*
         ── Glassmorphism background ─────────────────────────────────────────
         CRITICAL: blobs must be LARGE (65–80 vw) and centred behind where
@@ -160,7 +166,7 @@ function App() {
       />
 
       <ErrorBoundary>
-        <main className="relative z-10 pt-10 px-4 pb-16 max-w-4xl mx-auto">
+        <main className="relative z-10 pt-10 px-4 pb-56 max-w-4xl mx-auto">
           <div className="flex flex-col items-center gap-5">
 
             {/* Search */}
