@@ -6,6 +6,7 @@ import type { CurrentWeather } from '../types/weather'
 interface WeatherHeroProps {
   data: CurrentWeather
   unit: 'C' | 'F'
+  isDark: boolean
 }
 
 function localTime(unixUtc: number, tzOffsetSec: number): string {
@@ -23,21 +24,60 @@ function todayLabel(): string {
   })
 }
 
+/** Gradient background overlay per condition — makes the hero card feel alive */
+function conditionAccent(id: number): string {
+  if (id >= 200 && id < 300) return 'linear-gradient(135deg, rgba(109,40,217,0.28) 0%, rgba(91,33,182,0.14) 40%, transparent 70%)'
+  if (id >= 300 && id < 600) return 'linear-gradient(135deg, rgba(29,78,216,0.28) 0%, rgba(37,99,235,0.14) 40%, transparent 70%)'
+  if (id >= 600 && id < 700) return 'linear-gradient(135deg, rgba(186,230,253,0.28) 0%, rgba(224,242,254,0.14) 40%, transparent 70%)'
+  if (id >= 700 && id < 800) return 'linear-gradient(135deg, rgba(100,116,139,0.24) 0%, rgba(148,163,184,0.12) 40%, transparent 70%)'
+  if (id === 800)             return 'linear-gradient(135deg, rgba(251,191,36,0.30) 0%, rgba(245,158,11,0.14) 40%, transparent 70%)'
+  if (id > 800)               return 'linear-gradient(135deg, rgba(71,85,105,0.24) 0%, rgba(100,116,139,0.12) 40%, transparent 70%)'
+  return 'linear-gradient(135deg, rgba(30,64,175,0.22) 0%, transparent 60%)'
+}
+
+/** Gradient colour for the temperature number */
+function tempGradient(id: number, isDark: boolean): React.CSSProperties {
+  const gradients: Record<string, string> = {
+    thunder: isDark ? 'linear-gradient(135deg, #C4B5FD 0%, #818CF8 100%)' : 'linear-gradient(135deg, #6D28D9 0%, #4338CA 100%)',
+    rain:    isDark ? 'linear-gradient(135deg, #93C5FD 0%, #60A5FA 100%)' : 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%)',
+    snow:    isDark ? 'linear-gradient(135deg, #BAE6FD 0%, #7DD3FC 100%)' : 'linear-gradient(135deg, #0369A1 0%, #0284C7 100%)',
+    clear:   isDark ? 'linear-gradient(135deg, #FDE68A 0%, #F59E0B 100%)' : 'linear-gradient(135deg, #D97706 0%, #B45309 100%)',
+    clouds:  isDark ? 'linear-gradient(135deg, #CBD5E1 0%, #94A3B8 100%)' : 'linear-gradient(135deg, #475569 0%, #334155 100%)',
+    mist:    isDark ? 'linear-gradient(135deg, #CBD5E1 0%, #94A3B8 100%)' : 'linear-gradient(135deg, #475569 0%, #334155 100%)',
+    default: isDark ? 'linear-gradient(135deg, #F1F5F9 0%, #94A3B8 100%)' : 'linear-gradient(135deg, #0F172A 0%, #334155 100%)',
+  }
+
+  let key = 'default'
+  if (id >= 200 && id < 300) key = 'thunder'
+  else if (id >= 300 && id < 600) key = 'rain'
+  else if (id >= 600 && id < 700) key = 'snow'
+  else if (id >= 700 && id < 800) key = 'mist'
+  else if (id === 800) key = 'clear'
+  else if (id > 800) key = 'clouds'
+
+  return {
+    background: gradients[key],
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  }
+}
+
 function conditionAnim(id: number) {
   if (id === 800)
     return { animate: { rotate: 360 }, transition: { duration: 20, repeat: Infinity, ease: 'linear' as const } }
   if (id >= 200 && id < 300)
-    return { animate: { x: [0, -4, 4, 0] }, transition: { duration: 0.38, repeat: Infinity, ease: 'easeInOut' as const, repeatDelay: 4 } }
+    return { animate: { x: [0, -5, 5, 0] }, transition: { duration: 0.36, repeat: Infinity, ease: 'easeInOut' as const, repeatDelay: 3.5 } }
   if (id >= 300 && id < 600)
-    return { animate: { y: [0, 5, 0] }, transition: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' as const } }
+    return { animate: { y: [0, 6, 0] }, transition: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' as const } }
   if (id >= 600 && id < 700)
-    return { animate: { y: [0, -8, 0] }, transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' as const } }
+    return { animate: { y: [0, -9, 0] }, transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' as const } }
   if (id > 800)
-    return { animate: { x: [0, 7, 0] }, transition: { duration: 7, repeat: Infinity, ease: 'easeInOut' as const } }
-  return { animate: { opacity: [1, 0.65, 1] }, transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' as const } }
+    return { animate: { x: [0, 8, 0] }, transition: { duration: 7, repeat: Infinity, ease: 'easeInOut' as const } }
+  return { animate: { opacity: [1, 0.6, 1] }, transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' as const } }
 }
 
-export function WeatherHero({ data, unit }: WeatherHeroProps) {
+export function WeatherHero({ data, unit, isDark }: WeatherHeroProps) {
   const sym  = unit === 'C' ? '°C' : '°F'
   const cond = data.weather[0]
   const iconUrl = `https://openweathermap.org/img/wn/${cond.icon}@4x.png`
@@ -58,11 +98,16 @@ export function WeatherHero({ data, unit }: WeatherHeroProps) {
       transition={{ duration: 0.5, ease: 'easeOut' }}
       className="glass-card relative overflow-hidden"
     >
-      {/* Gradient accent */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.12)] via-transparent to-transparent pointer-events-none rounded-[20px]" />
+      {/* Condition-specific gradient accent */}
+      <div
+        className="absolute inset-0 pointer-events-none rounded-[20px]"
+        style={{ background: conditionAccent(cond.id) }}
+      />
+      {/* Subtle shine at top edge */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none" />
 
       <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-        {/* Left column */}
+        {/* Left */}
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-1.5">
             <MapPin className="w-4 h-4 text-[#3B82F6] shrink-0" />
@@ -71,16 +116,18 @@ export function WeatherHero({ data, unit }: WeatherHeroProps) {
             </span>
           </div>
 
+          {/* Gradient temperature number */}
           <div className="flex items-end gap-2">
-            <motion.span className="font-code text-8xl font-semibold text-fg leading-none">
+            <motion.span
+              className="font-code text-8xl font-semibold leading-none"
+              style={tempGradient(cond.id, isDark)}
+            >
               {displayTemp}
             </motion.span>
             <span className="font-code text-3xl text-dim mb-2">{sym}</span>
           </div>
 
-          <p className="font-sans text-dim text-base capitalize tracking-wide">
-            {cond.description}
-          </p>
+          <p className="font-sans text-dim text-base capitalize tracking-wide">{cond.description}</p>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
             <span className="flex items-center gap-1 font-sans text-sm text-dim">
@@ -109,7 +156,7 @@ export function WeatherHero({ data, unit }: WeatherHeroProps) {
           </div>
         </div>
 
-        {/* Right column — condition icon with enter + looping animation */}
+        {/* Right — icon with condition animation */}
         <div className="flex flex-col items-center sm:items-end gap-2">
           <motion.div
             initial={{ scale: 0.6, opacity: 0 }}
@@ -119,7 +166,7 @@ export function WeatherHero({ data, unit }: WeatherHeroProps) {
             <motion.img
               src={iconUrl}
               alt={cond.description}
-              className="w-28 h-28 drop-shadow-2xl"
+              className="w-32 h-32 drop-shadow-2xl"
               {...conditionAnim(cond.id)}
             />
           </motion.div>

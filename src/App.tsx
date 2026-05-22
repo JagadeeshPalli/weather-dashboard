@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { KeyRound, ExternalLink, X } from 'lucide-react'
-import { FloatingNav } from './components/FloatingNav'
+import { ControlsWidget } from './components/ControlsWidget'
 import { SearchBar } from './components/SearchBar'
 import { WeatherHero } from './components/WeatherHero'
 import { WeatherDetails } from './components/WeatherDetails'
@@ -13,7 +13,7 @@ import { useWeatherData } from './hooks/useWeatherData'
 import { hasApiKey } from './services/weatherApi'
 import type { UnitSystem } from './types/weather'
 
-// Chart.js is heavy (~200KB) — split into its own chunk so the initial bundle stays lean
+// Chart.js is large — split into its own chunk so initial load is fast
 const ChartsSection = lazy(() => import('./components/ChartsSection'))
 
 function ApiKeyBanner({ onDismiss }: { onDismiss: () => void }) {
@@ -30,10 +30,9 @@ function ApiKeyBanner({ onDismiss }: { onDismiss: () => void }) {
         <div className="flex-1 min-w-0">
           <p className="font-sans text-sm font-medium text-fg">API key not configured</p>
           <p className="font-sans text-xs text-dim mt-1 leading-relaxed">
-            Create a <span className="font-code text-[#F59E0B]">.env</span> file in the project
-            root and add your key:
+            Create a <span className="font-code text-[#F59E0B]">.env</span> file and add:
           </p>
-          <div className="mt-2 px-3 py-2 rounded-lg bg-[rgba(0,0,0,0.4)] font-code text-xs text-[#F59E0B] select-all">
+          <div className="mt-2 px-3 py-2 rounded-lg bg-[rgba(0,0,0,0.35)] font-code text-xs text-[#F59E0B] select-all">
             VITE_OPENWEATHERMAP_API_KEY=your_key_here
           </div>
           <a
@@ -48,7 +47,7 @@ function ApiKeyBanner({ onDismiss }: { onDismiss: () => void }) {
         </div>
         <button
           onClick={onDismiss}
-          className="text-dim hover:text-fg transition-colors shrink-0"
+          className="text-dim hover:text-fg transition-colors shrink-0 cursor-pointer"
           aria-label="Dismiss"
         >
           <X className="w-4 h-4" />
@@ -68,7 +67,6 @@ function App() {
 
   const showBanner = !hasApiKey() && !bannerDismissed
 
-  // Apply / remove the light-theme class and persist preference
   useEffect(() => {
     if (isDark) {
       document.documentElement.classList.remove('light')
@@ -88,7 +86,6 @@ function App() {
     [load]
   )
 
-  // Re-fetch with new unit whenever unitSystem changes
   useEffect(() => {
     if (lastCoordsRef.current) {
       load(lastCoordsRef.current.lat, lastCoordsRef.current.lon)
@@ -100,31 +97,62 @@ function App() {
       className={`min-h-screen transition-all duration-500 ${
         isDark
           ? 'bg-[#000000]'
-          : 'bg-gradient-to-br from-[#5BA3CC] via-[#87BFE0] to-[#6AAED6]'
+          : 'bg-gradient-to-br from-[#4A90C4] via-[#6BADD4] to-[#4A8FB8]'
       }`}
     >
-      {/* Weather FX */}
+      {/* ── Weather-condition FX layer ──────────────────────────────────── */}
       {!loading && !error && current && (
         <WeatherBackground conditionId={current.weather[0].id} isDark={isDark} />
       )}
 
-      {/* Animated gradient blobs — theme-aware colours via CSS vars */}
+      {/*
+        ── Glassmorphism background ─────────────────────────────────────────
+        CRITICAL: blobs must be LARGE (65–80 vw) and centred behind where
+        the cards sit so backdrop-filter blur has vivid colour to diffract.
+      */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        {/* Top-left — blue */}
         <div
-          className="absolute top-1/4 -left-16 w-96 h-96 rounded-full opacity-20 blur-3xl animate-blob"
-          style={{ background: 'var(--blob-1)' }}
+          className="absolute rounded-full animate-blob"
+          style={{
+            top: '-18%', left: '-22%',
+            width: '80vw', height: '80vw',
+            background: isDark
+              ? 'radial-gradient(circle at 40% 40%, rgba(37,99,235,0.72) 0%, transparent 65%)'
+              : 'radial-gradient(circle at 40% 40%, rgba(29,78,216,0.62) 0%, transparent 65%)',
+            filter: 'blur(72px)',
+          }}
         />
+        {/* Bottom-right — purple */}
         <div
-          className="absolute bottom-1/4 -right-16 w-80 h-80 rounded-full opacity-15 blur-3xl animate-blob"
-          style={{ background: 'var(--blob-2)', animationDelay: '2s' }}
+          className="absolute rounded-full animate-blob"
+          style={{
+            bottom: '-18%', right: '-22%',
+            width: '72vw', height: '72vw',
+            background: isDark
+              ? 'radial-gradient(circle at 60% 60%, rgba(139,92,246,0.68) 0%, transparent 65%)'
+              : 'radial-gradient(circle at 60% 60%, rgba(124,58,237,0.58) 0%, transparent 65%)',
+            filter: 'blur(72px)',
+            animationDelay: '2s',
+          }}
         />
+        {/* Centre — sky / teal */}
         <div
-          className="absolute top-3/4 left-1/3 w-72 h-72 rounded-full opacity-10 blur-3xl animate-blob"
-          style={{ background: 'var(--blob-3)', animationDelay: '4s' }}
+          className="absolute rounded-full animate-blob"
+          style={{
+            top: '28%', left: '18%',
+            width: '65vw', height: '65vw',
+            background: isDark
+              ? 'radial-gradient(circle at 50% 50%, rgba(6,182,212,0.52) 0%, transparent 65%)'
+              : 'radial-gradient(circle at 50% 50%, rgba(251,191,36,0.42) 0%, transparent 65%)',
+            filter: 'blur(72px)',
+            animationDelay: '4s',
+          }}
         />
       </div>
 
-      <FloatingNav
+      {/* ── Minimal floating controls (theme + unit) ────────────────────── */}
+      <ControlsWidget
         unit={unit}
         onUnitToggle={() => setUnit((u) => (u === 'C' ? 'F' : 'C'))}
         isDark={isDark}
@@ -132,88 +160,88 @@ function App() {
       />
 
       <ErrorBoundary>
-      <main className="relative z-10 pt-28 px-4 pb-12 max-w-4xl mx-auto">
-        <div className="flex flex-col items-center gap-6">
+        <main className="relative z-10 pt-10 px-4 pb-16 max-w-4xl mx-auto">
+          <div className="flex flex-col items-center gap-5">
 
-          {/* Search bar — primary hero element */}
-          <motion.div
-            className="w-full flex flex-col items-center gap-3"
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: 'easeOut', delay: 0.15 }}
-          >
-            <SearchBar onSelect={handleLocationSelect} autoDetect />
-          </motion.div>
+            {/* Search */}
+            <motion.div
+              className="w-full flex flex-col items-center"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: 'easeOut', delay: 0.12 }}
+            >
+              <SearchBar onSelect={handleLocationSelect} autoDetect />
+            </motion.div>
 
-          {/* API key setup banner */}
-          <AnimatePresence>
-            {showBanner && (
-              <ApiKeyBanner onDismiss={() => setBannerDismissed(true)} />
-            )}
-          </AnimatePresence>
-
-          {/* Content area */}
-          <div className="w-full flex flex-col gap-4">
-            {loading && (
-              <>
-                <SkeletonHero />
-                <SkeletonDetails />
-              </>
-            )}
-
-            {error && !loading && (
-              <ErrorState
-                message={error}
-                onRetry={
-                  lastCoordsRef.current
-                    ? () => load(lastCoordsRef.current!.lat, lastCoordsRef.current!.lon)
-                    : undefined
-                }
-              />
-            )}
-
-            <AnimatePresence mode="wait">
-              {!loading && !error && current && (
-                <motion.div
-                  key={current.id}
-                  className="flex flex-col gap-4"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.35, ease: 'easeOut' }}
-                >
-                  <WeatherHero data={current} unit={unit} />
-                  <WeatherDetails data={current} unit={unit} />
-                  {forecast && (
-                    <Suspense
-                      fallback={
-                        <div className="glass-card animate-pulse h-64" aria-label="Loading charts" />
-                      }
-                    >
-                      <ChartsSection items={forecast.list} unit={unit} isDark={isDark} />
-                    </Suspense>
-                  )}
-                </motion.div>
+            {/* API key banner */}
+            <AnimatePresence>
+              {showBanner && (
+                <ApiKeyBanner onDismiss={() => setBannerDismissed(true)} />
               )}
             </AnimatePresence>
 
-            {!loading && !error && !current && !showBanner && (
-              <motion.div
-                className="text-center py-20"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                <p className="font-sans text-dim text-base">
-                  Search for a city or tap{' '}
-                  <span className="text-[#3B82F6]">📍</span> to use your location.
-                </p>
-              </motion.div>
-            )}
-          </div>
+            {/* Content */}
+            <div className="w-full flex flex-col gap-4">
+              {loading && (
+                <>
+                  <SkeletonHero />
+                  <SkeletonDetails />
+                </>
+              )}
 
-        </div>
-      </main>
+              {error && !loading && (
+                <ErrorState
+                  message={error}
+                  onRetry={
+                    lastCoordsRef.current
+                      ? () => load(lastCoordsRef.current!.lat, lastCoordsRef.current!.lon)
+                      : undefined
+                  }
+                />
+              )}
+
+              <AnimatePresence mode="wait">
+                {!loading && !error && current && (
+                  <motion.div
+                    key={current.id}
+                    className="flex flex-col gap-4"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                  >
+                    <WeatherHero data={current} unit={unit} isDark={isDark} />
+                    <WeatherDetails data={current} unit={unit} />
+                    {forecast && (
+                      <Suspense
+                        fallback={
+                          <div className="glass-card animate-pulse h-64" aria-label="Loading charts" />
+                        }
+                      >
+                        <ChartsSection items={forecast.list} unit={unit} isDark={isDark} />
+                      </Suspense>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {!loading && !error && !current && !showBanner && (
+                <motion.div
+                  className="text-center py-24"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <p className="font-sans text-dim text-base">
+                    Search a city above or tap the{' '}
+                    <span className="text-[#3B82F6] font-medium">location pin</span> to use your location.
+                  </p>
+                </motion.div>
+              )}
+            </div>
+
+          </div>
+        </main>
       </ErrorBoundary>
     </div>
   )
