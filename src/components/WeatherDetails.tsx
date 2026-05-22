@@ -22,8 +22,10 @@ const StatCard = memo(function StatCard({ icon, label, value, index, bar }: Stat
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.97 }}
       transition={{ delay: index * 0.07, duration: 0.4, ease: 'easeOut' }}
-      className="glass-card flex flex-col gap-3"
+      className="glass-card flex flex-col gap-3 cursor-default"
     >
       <div className="flex items-center justify-between">
         <span className="font-sans text-[10px] text-dim uppercase tracking-widest">{label}</span>

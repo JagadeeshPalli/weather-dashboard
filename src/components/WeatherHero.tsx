@@ -1,24 +1,11 @@
-import { motion } from 'framer-motion'
+import { useEffect } from 'react'
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
 import { MapPin, Thermometer, ArrowUp, ArrowDown, Sunrise, Sunset } from 'lucide-react'
 import type { CurrentWeather } from '../types/weather'
 
 interface WeatherHeroProps {
   data: CurrentWeather
   unit: 'C' | 'F'
-}
-
-function conditionAnim(id: number) {
-  if (id === 800)
-    return { animate: { rotate: 360 }, transition: { duration: 20, repeat: Infinity, ease: 'linear' as const } }
-  if (id >= 200 && id < 300)
-    return { animate: { x: [0, -4, 4, 0] }, transition: { duration: 0.38, repeat: Infinity, ease: 'easeInOut' as const, repeatDelay: 4 } }
-  if (id >= 300 && id < 600)
-    return { animate: { y: [0, 5, 0] }, transition: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' as const } }
-  if (id >= 600 && id < 700)
-    return { animate: { y: [0, -8, 0] }, transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' as const } }
-  if (id > 800)
-    return { animate: { x: [0, 7, 0] }, transition: { duration: 7, repeat: Infinity, ease: 'easeInOut' as const } }
-  return { animate: { opacity: [1, 0.65, 1] }, transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' as const } }
 }
 
 function localTime(unixUtc: number, tzOffsetSec: number): string {
@@ -36,10 +23,33 @@ function todayLabel(): string {
   })
 }
 
+function conditionAnim(id: number) {
+  if (id === 800)
+    return { animate: { rotate: 360 }, transition: { duration: 20, repeat: Infinity, ease: 'linear' as const } }
+  if (id >= 200 && id < 300)
+    return { animate: { x: [0, -4, 4, 0] }, transition: { duration: 0.38, repeat: Infinity, ease: 'easeInOut' as const, repeatDelay: 4 } }
+  if (id >= 300 && id < 600)
+    return { animate: { y: [0, 5, 0] }, transition: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' as const } }
+  if (id >= 600 && id < 700)
+    return { animate: { y: [0, -8, 0] }, transition: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' as const } }
+  if (id > 800)
+    return { animate: { x: [0, 7, 0] }, transition: { duration: 7, repeat: Infinity, ease: 'easeInOut' as const } }
+  return { animate: { opacity: [1, 0.65, 1] }, transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' as const } }
+}
+
 export function WeatherHero({ data, unit }: WeatherHeroProps) {
-  const sym = unit === 'C' ? '°C' : '°F'
+  const sym  = unit === 'C' ? '°C' : '°F'
   const cond = data.weather[0]
   const iconUrl = `https://openweathermap.org/img/wn/${cond.icon}@4x.png`
+
+  // Animated temperature count-up (fires on unit toggle or city change)
+  const tempMotion = useMotionValue(data.main.temp)
+  const displayTemp = useTransform(tempMotion, (v) => Math.round(v).toString())
+
+  useEffect(() => {
+    const controls = animate(tempMotion, data.main.temp, { duration: 1.1, ease: 'easeOut' })
+    return () => controls.stop()
+  }, [data.main.temp, tempMotion])
 
   return (
     <motion.div
@@ -49,7 +59,7 @@ export function WeatherHero({ data, unit }: WeatherHeroProps) {
       className="glass-card relative overflow-hidden"
     >
       {/* Gradient accent */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.15)] via-transparent to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[rgba(30,64,175,0.12)] via-transparent to-transparent pointer-events-none rounded-[20px]" />
 
       <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         {/* Left column */}
@@ -62,9 +72,9 @@ export function WeatherHero({ data, unit }: WeatherHeroProps) {
           </div>
 
           <div className="flex items-end gap-2">
-            <span className="font-code text-8xl font-semibold text-fg leading-none">
-              {Math.round(data.main.temp)}
-            </span>
+            <motion.span className="font-code text-8xl font-semibold text-fg leading-none">
+              {displayTemp}
+            </motion.span>
             <span className="font-code text-3xl text-dim mb-2">{sym}</span>
           </div>
 
@@ -99,7 +109,7 @@ export function WeatherHero({ data, unit }: WeatherHeroProps) {
           </div>
         </div>
 
-        {/* Right column */}
+        {/* Right column — condition icon with enter + looping animation */}
         <div className="flex flex-col items-center sm:items-end gap-2">
           <motion.div
             initial={{ scale: 0.6, opacity: 0 }}

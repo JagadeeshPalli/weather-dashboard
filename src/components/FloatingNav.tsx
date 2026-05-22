@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Cloud, Sun, Moon } from 'lucide-react'
+import { CloudSun, Sun, Moon } from 'lucide-react'
 
 interface FloatingNavProps {
   unit: 'C' | 'F'
@@ -17,11 +17,13 @@ export function FloatingNav({ unit, onUnitToggle, isDark, onThemeToggle }: Float
       className="fixed top-4 left-4 right-4 z-50"
     >
       <nav className="glass-card py-3 px-5 flex items-center justify-between">
-        {/* Brand */}
-        <div className="flex items-center gap-2.5">
-          <Cloud className="w-5 h-5 text-[#3B82F6]" />
-          <span className="font-code text-fg font-semibold tracking-tight">WeatherDash</span>
-        </div>
+        {/* Brand — icon only, no text */}
+        <motion.div
+          whileHover={{ rotate: 15, scale: 1.1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        >
+          <CloudSun className="w-6 h-6 text-[#3B82F6]" />
+        </motion.div>
 
         <div className="flex items-center gap-2">
           {/* Theme toggle */}

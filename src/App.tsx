@@ -103,9 +103,9 @@ function App() {
           : 'bg-gradient-to-br from-[#5BA3CC] via-[#87BFE0] to-[#6AAED6]'
       }`}
     >
-      {/* Weather FX — rendered below content (z-index 1 in WeatherBackground) */}
+      {/* Weather FX */}
       {!loading && !error && current && (
-        <WeatherBackground conditionId={current.weather[0].id} />
+        <WeatherBackground conditionId={current.weather[0].id} isDark={isDark} />
       )}
 
       {/* Animated gradient blobs — theme-aware colours via CSS vars */}
@@ -135,21 +135,13 @@ function App() {
       <main className="relative z-10 pt-28 px-4 pb-12 max-w-4xl mx-auto">
         <div className="flex flex-col items-center gap-6">
 
-          {/* Title + search */}
+          {/* Search bar — primary hero element */}
           <motion.div
-            className="w-full flex flex-col items-center gap-4"
+            className="w-full flex flex-col items-center gap-3"
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: 'easeOut', delay: 0.15 }}
           >
-            <div className="text-center">
-              <h1 className="font-code text-3xl font-semibold text-fg tracking-tight">
-                Weather Dashboard
-              </h1>
-              <p className="font-sans text-dim text-sm mt-1">
-                Real-time weather for any city on Earth
-              </p>
-            </div>
             <SearchBar onSelect={handleLocationSelect} autoDetect />
           </motion.div>
 
@@ -180,21 +172,30 @@ function App() {
               />
             )}
 
-            {!loading && !error && current && (
-              <>
-                <WeatherHero data={current} unit={unit} />
-                <WeatherDetails data={current} unit={unit} />
-                {forecast && (
-                  <Suspense
-                    fallback={
-                      <div className="glass-card animate-pulse h-64" aria-label="Loading charts" />
-                    }
-                  >
-                    <ChartsSection items={forecast.list} unit={unit} isDark={isDark} />
-                  </Suspense>
-                )}
-              </>
-            )}
+            <AnimatePresence mode="wait">
+              {!loading && !error && current && (
+                <motion.div
+                  key={current.id}
+                  className="flex flex-col gap-4"
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.35, ease: 'easeOut' }}
+                >
+                  <WeatherHero data={current} unit={unit} />
+                  <WeatherDetails data={current} unit={unit} />
+                  {forecast && (
+                    <Suspense
+                      fallback={
+                        <div className="glass-card animate-pulse h-64" aria-label="Loading charts" />
+                      }
+                    >
+                      <ChartsSection items={forecast.list} unit={unit} isDark={isDark} />
+                    </Suspense>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {!loading && !error && !current && !showBanner && (
               <motion.div
