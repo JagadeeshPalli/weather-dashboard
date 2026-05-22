@@ -128,7 +128,7 @@ function TreeLayer({ isDark }: { isDark: boolean }) {
 }
 
 /* ─── Lottie character (when public/lottie/<condition>.json exists) ─────────── */
-function LottieCharacter({ condition }: { condition: SceneCondition }) {
+const LottieCharacter = ({ condition }: { condition: SceneCondition }) => {
   const anim = useLottieAnim(condition)
 
   if (anim.status !== 'ready') return null   // unavailable → parent renders SVG fallback

@@ -126,9 +126,13 @@ export function WeatherHero({ data, unit, isDark }: WeatherHeroProps) {
             </span>
           </div>
 
-          {/* Gradient temperature number — plain span avoids WebkitTextFill repaint bug */}
+          {/* Gradient temperature number.
+               key forces a fresh DOM element on theme/condition change so the
+               browser never reuses a stale -webkit-background-clip:text GPU layer
+               (which causes the blank square-box repaint bug on Windows). */}
           <div className="flex items-end gap-2">
             <span
+              key={`temp-${isDark ? 'd' : 'l'}-${cond.id}`}
               ref={tempRef}
               className="font-code text-8xl font-semibold leading-none"
               style={tempGradient(cond.id, isDark)}
