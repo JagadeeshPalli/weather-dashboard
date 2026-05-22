@@ -33,18 +33,23 @@
 
 /* ─── LIGHT theme ───────────────────────────────────────────────────────── */
 html.light {
-  --bg-primary:    #F0F4FF;
-  --bg-secondary:  #E2E8F0;
-  --glass-bg:      rgba(255, 255, 255, 0.65);
-  --glass-border:  rgba(15, 23, 42, 0.12);
-  --glass-hover:   rgba(15, 23, 42, 0.2);
-  --text-primary:  #0F172A;
-  --text-muted:    #475569;
-  --skeleton-bg:   rgba(15, 23, 42, 0.07);
+  /* Richer sky-blue base so cards stand out clearly */
+  --bg-primary:    #7FB3D3;
+  --bg-secondary:  #A8CCE0;
 
-  --blob-1: #BFDBFE;
-  --blob-2: #93C5FD;
-  --blob-3: #E0E7FF;
+  /* Cards: near-opaque white so they pop against the blue background */
+  --glass-bg:      rgba(255, 255, 255, 0.88);
+  --glass-border:  rgba(15, 23, 42, 0.14);
+  --glass-hover:   rgba(15, 23, 42, 0.22);
+
+  --text-primary:  #0F172A;
+  --text-muted:    #334155;
+  --skeleton-bg:   rgba(15, 23, 42, 0.08);
+
+  /* More saturated blobs to show against sky background */
+  --blob-1: #2563EB;
+  --blob-2: #1D4ED8;
+  --blob-3: #6366F1;
 }
 
 /* ─── Base ──────────────────────────────────────────────────────────────── */
@@ -96,6 +101,19 @@ body {
   .font-code {
     font-family: 'Fira Code', monospace;
   }
+}
+
+/* ─── Light mode card elevation ─────────────────────────────────────────── */
+html.light .glass-card {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+html.light .glass-card:hover {
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.07);
+}
+
+html.light .glass {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.10);
 }
 
 /* ─── Reduced motion ────────────────────────────────────────────────────── */

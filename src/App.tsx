@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { KeyRound, ExternalLink, X } from 'lucide-react'
 import { FloatingNav } from './components/FloatingNav'
@@ -11,9 +11,10 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { WeatherBackground } from './components/WeatherBackground'
 import { useWeatherData } from './hooks/useWeatherData'
 import { hasApiKey } from './services/weatherApi'
-import { HourlyChart } from './components/HourlyChart'
-import { ForecastGrid } from './components/ForecastGrid'
 import type { UnitSystem } from './types/weather'
+
+// Chart.js is heavy (~200KB) — split into its own chunk so the initial bundle stays lean
+const ChartsSection = lazy(() => import('./components/ChartsSection'))
 
 function ApiKeyBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
@@ -96,8 +97,11 @@ function App() {
 
   return (
     <div
-      className="min-h-screen transition-colors duration-300"
-      style={{ backgroundColor: 'var(--bg-primary)' }}
+      className={`min-h-screen transition-all duration-500 ${
+        isDark
+          ? 'bg-[#000000]'
+          : 'bg-gradient-to-br from-[#5BA3CC] via-[#87BFE0] to-[#6AAED6]'
+      }`}
     >
       {/* Weather FX — rendered below content (z-index 1 in WeatherBackground) */}
       {!loading && !error && current && (
@@ -181,10 +185,13 @@ function App() {
                 <WeatherHero data={current} unit={unit} />
                 <WeatherDetails data={current} unit={unit} />
                 {forecast && (
-                  <>
-                    <HourlyChart items={forecast.list} unit={unit} isDark={isDark} />
-                    <ForecastGrid items={forecast.list} unit={unit} />
-                  </>
+                  <Suspense
+                    fallback={
+                      <div className="glass-card animate-pulse h-64" aria-label="Loading charts" />
+                    }
+                  >
+                    <ChartsSection items={forecast.list} unit={unit} isDark={isDark} />
+                  </Suspense>
                 )}
               </>
             )}
