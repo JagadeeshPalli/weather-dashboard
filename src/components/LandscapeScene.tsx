@@ -1,5 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, lazy, Suspense } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
+import { useLottieAnim } from '../hooks/useLottieAnim'
+
+// Lazy-load lottie-react so it only bundles when actually needed
+const Lottie = lazy(() => import('lottie-react'))
 
 interface LandscapeSceneProps {
   conditionId: number
@@ -123,8 +127,34 @@ function TreeLayer({ isDark }: { isDark: boolean }) {
   )
 }
 
-/* ─── Illustrated walking character ───────────────────────────────────────────
-   Samsung-style flat design: real proportions, face, clothing, accessories.
+/* ─── Lottie character (when public/lottie/<condition>.json exists) ─────────── */
+function LottieCharacter({ condition }: { condition: SceneCondition }) {
+  const anim = useLottieAnim(condition)
+
+  if (anim.status !== 'ready') return null   // unavailable → parent renders SVG fallback
+
+  return (
+    <motion.div
+      style={{ position: 'absolute', bottom: 44, width: 160, height: 160 }}
+      initial={{ x: '110vw' }}
+      animate={{ x: '-20vw' }}
+      transition={{ duration: 30, repeat: Infinity, ease: 'linear', delay: 2 }}
+    >
+      <Suspense fallback={null}>
+        <Lottie
+          animationData={anim.data}
+          loop
+          autoplay
+          style={{ width: '100%', height: '100%' }}
+          rendererSettings={{ preserveAspectRatio: 'xMidYMid meet' }}
+        />
+      </Suspense>
+    </motion.div>
+  )
+}
+
+/* ─── Illustrated SVG walking character (Samsung-style flat design) ─────────
+   Fallback used when no Lottie JSON is present in public/lottie/.
    SVG viewBox="0 0 62 118" (1:1 px mapping), overflow=visible for umbrella.
    motion.g groups keep shoes/hands anchored to rotating limbs.
    ──────────────────────────────────────────────────────────────────────────── */
@@ -420,17 +450,30 @@ function SceneMist({ isDark }: { isDark: boolean }) {
   )
 }
 
+/* ─── Character switcher: Lottie (preferred) → SVG fallback ────────────────── */
+function CharacterLayer({ condition, isDark }: { condition: SceneCondition; isDark: boolean }) {
+  const lottie = useLottieAnim(condition)
+
+  // Lottie file found → use it
+  if (lottie.status === 'ready') {
+    return <LottieCharacter condition={condition} />
+  }
+
+  // Lottie loading or unavailable → always render SVG (no flash)
+  return <WalkingCharacter condition={condition} isDark={isDark} />
+}
+
 /* ─── Main export ───────────────────────────────────────────────────────────── */
 export function LandscapeScene({ conditionId, isDark }: LandscapeSceneProps) {
   const prefersReducedMotion = useReducedMotion()
   if (prefersReducedMotion) return null
 
-  const condition = getSceneCondition(conditionId)
-  const hasRain   = ['rain', 'thunder', 'drizzle'].includes(condition)
+  const condition  = getSceneCondition(conditionId)
+  const hasRain    = ['rain', 'thunder', 'drizzle'].includes(condition)
   const hasThunder = condition === 'thunder'
-  const hasSnow   = condition === 'snow'
-  const hasMist   = condition === 'mist'
-  const isClear   = condition === 'clear'
+  const hasSnow    = condition === 'snow'
+  const hasMist    = condition === 'mist'
+  const isClear    = condition === 'clear'
 
   return (
     <div
@@ -461,8 +504,8 @@ export function LandscapeScene({ conditionId, isDark }: LandscapeSceneProps) {
       <HouseSilhouette isDark={isDark} />
       <GroundLayer isDark={isDark} />
 
-      {/* ── Walking character ── */}
-      <WalkingCharacter condition={condition} isDark={isDark} />
+      {/* ── Character: Lottie when JSON present, SVG fallback otherwise ── */}
+      <CharacterLayer condition={condition} isDark={isDark} />
     </div>
   )
 }
