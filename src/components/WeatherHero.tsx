@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
 import { MapPin, Thermometer, ArrowUp, ArrowDown, Sunrise, Sunset } from 'lucide-react'
 import type { CurrentWeather } from '../types/weather'
@@ -83,8 +83,18 @@ export function WeatherHero({ data, unit, isDark }: WeatherHeroProps) {
   const iconUrl = `https://openweathermap.org/img/wn/${cond.icon}@4x.png`
 
   // Animated temperature count-up (fires on unit toggle or city change)
-  const tempMotion = useMotionValue(data.main.temp)
+  // Uses a plain span + MotionValue DOM subscription to avoid the
+  // -webkit-background-clip:text blank-box repaint bug on theme switch.
+  const tempMotion  = useMotionValue(data.main.temp)
   const displayTemp = useTransform(tempMotion, (v) => Math.round(v).toString())
+  const tempRef     = useRef<HTMLSpanElement>(null)
+
+  // Wire MotionValue → DOM span (bypasses React re-render, no style conflict)
+  useEffect(() => {
+    return displayTemp.on('change', (v) => {
+      if (tempRef.current) tempRef.current.textContent = v
+    })
+  }, [displayTemp])
 
   useEffect(() => {
     const controls = animate(tempMotion, data.main.temp, { duration: 1.1, ease: 'easeOut' })
@@ -116,14 +126,15 @@ export function WeatherHero({ data, unit, isDark }: WeatherHeroProps) {
             </span>
           </div>
 
-          {/* Gradient temperature number */}
+          {/* Gradient temperature number — plain span avoids WebkitTextFill repaint bug */}
           <div className="flex items-end gap-2">
-            <motion.span
+            <span
+              ref={tempRef}
               className="font-code text-8xl font-semibold leading-none"
               style={tempGradient(cond.id, isDark)}
             >
-              {displayTemp}
-            </motion.span>
+              {Math.round(data.main.temp)}
+            </span>
             <span className="font-code text-3xl text-dim mb-2">{sym}</span>
           </div>
 

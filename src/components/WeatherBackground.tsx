@@ -30,40 +30,48 @@ const tintMap: Record<FXType, { dark: string; light: string }> = {
   clouds:  { dark: 'rgba(18,22,45,0.30)',  light: 'rgba(70,90,130,0.14)' },
 }
 
-/* ─── SVG Cloud (actual cloud shape using overlapping ellipses) ─────────── */
-interface CloudSVGProps {
-  color: string
-  width: number
-}
-function CloudSVG({ color, width }: CloudSVGProps) {
+/* ─── SVG Cloud — bezier-curve fluffy cloud shapes ───────────────────────── */
+// Three variants so each cloud in the scene looks naturally different.
+const CLOUD_PATHS = [
+  // Variant 0 — classic multi-bump cumulus
+  'M20,80 C6,80 2,66 14,60 C10,44 26,34 42,38 C46,20 68,12 84,24 C94,10 120,14 124,30 C140,24 156,38 152,54 C166,58 168,80 150,80 Z',
+  // Variant 1 — wide, puffy stratus
+  'M14,82 C2,82 2,68 14,64 C10,52 24,44 40,48 C42,32 64,24 82,34 C86,20 110,18 118,32 C132,26 150,36 148,52 C162,56 164,82 146,82 Z',
+  // Variant 2 — tall dramatic cumulonimbus
+  'M22,78 C6,78 2,62 16,56 C10,38 30,28 48,34 C52,14 78,8 94,22 C106,8 132,12 134,30 C152,26 162,44 156,60 C170,64 170,82 150,80 Z',
+]
+
+interface CloudSVGProps { color: string; shadowColor: string; width: number; variant?: number }
+function CloudSVG({ color, shadowColor, width, variant = 0 }: CloudSVGProps) {
+  const path = CLOUD_PATHS[variant % CLOUD_PATHS.length]
   return (
     <svg
-      viewBox="0 0 240 110"
+      viewBox="0 0 200 90"
       width={width}
-      height={width * 0.46}
+      height={width * 0.48}
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <ellipse cx="120" cy="78" rx="110" ry="32" fill={color} />
-      <ellipse cx="70"  cy="60" rx="52"  ry="48" fill={color} />
-      <ellipse cx="130" cy="52" rx="60"  ry="52" fill={color} />
-      <ellipse cx="185" cy="68" rx="48"  ry="38" fill={color} />
+      {/* soft drop-shadow copy for 3-D depth */}
+      <path d={path} fill={shadowColor} transform="translate(4,6)" />
+      {/* main cloud body */}
+      <path d={path} fill={color} />
     </svg>
   )
 }
 
 /* ─── Clouds ─────────────────────────────────────────────────────────────── */
 function Clouds({ isDark = true }: { isDark?: boolean }) {
-  const cloudColor = isDark
-    ? 'rgba(148,163,184,0.40)'
-    : 'rgba(51,65,85,0.52)'
+  const cloudColor  = isDark ? 'rgba(148,163,184,0.55)' : 'rgba(255,255,255,0.82)'
+  const shadowColor = isDark ? 'rgba(71,85,105,0.30)'   : 'rgba(148,163,184,0.45)'
 
   const clouds = useMemo(
     () => [
-      { top: '6%',  width: 300, delay: 0,   dur: 28, op: isDark ? 0.65 : 0.80 },
-      { top: '22%', width: 220, delay: 10,  dur: 38, op: isDark ? 0.55 : 0.70 },
-      { top: '48%', width: 380, delay: 5,   dur: 46, op: isDark ? 0.50 : 0.65 },
-      { top: '68%', width: 260, delay: 18,  dur: 34, op: isDark ? 0.45 : 0.60 },
+      { top: '4%',  width: 320, delay: 0,   dur: 30, op: isDark ? 0.70 : 0.88, v: 0 },
+      { top: '20%', width: 240, delay: 9,   dur: 42, op: isDark ? 0.60 : 0.78, v: 1 },
+      { top: '44%', width: 400, delay: 4,   dur: 50, op: isDark ? 0.55 : 0.72, v: 2 },
+      { top: '66%', width: 280, delay: 18,  dur: 36, op: isDark ? 0.50 : 0.68, v: 0 },
+      { top: '14%', width: 180, delay: 24,  dur: 28, op: isDark ? 0.42 : 0.60, v: 1 },
     ],
     [isDark]
   )
@@ -75,11 +83,11 @@ function Clouds({ isDark = true }: { isDark?: boolean }) {
           key={i}
           className="absolute"
           style={{ top: c.top, opacity: c.op }}
-          initial={{ x: '-28vw' }}
-          animate={{ x: '118vw' }}
+          initial={{ x: '-32vw' }}
+          animate={{ x: '120vw' }}
           transition={{ duration: c.dur, delay: c.delay, repeat: Infinity, ease: 'linear' }}
         >
-          <CloudSVG color={cloudColor} width={c.width} />
+          <CloudSVG color={cloudColor} shadowColor={shadowColor} width={c.width} variant={c.v} />
         </motion.div>
       ))}
     </>
@@ -89,35 +97,42 @@ function Clouds({ isDark = true }: { isDark?: boolean }) {
 /* ─── Rain ──────────────────────────────────────────────────────────────── */
 function Rain({ heavy = false, isDark = true }: { heavy?: boolean; isDark?: boolean }) {
   const count = heavy ? 52 : 34
+  // Slight wind angle makes rain look natural (not perfectly vertical)
+  const windAngleDeg = heavy ? -14 : -8
   const drops = useMemo(
     () =>
       Array.from({ length: count }, (_, i) => ({
         id:       i,
-        left:     `${(i / count) * 100}%`,
-        delay:    (i * 0.055) % 2.5,
-        duration: heavy ? 0.48 + (i % 5) * 0.05 : 0.72 + (i % 5) * 0.08,
-        opacity:  isDark ? 0.40 + (i % 4) * 0.13 : 0.60 + (i % 4) * 0.10,
-        height:   heavy ? 22 + (i % 8) * 3 : 15 + (i % 6) * 2,
+        left:     `${-2 + (i / count) * 106}%`,   // extend slightly off-screen to cover angle
+        delay:    (i * 0.048) % 2.2,
+        duration: heavy ? 0.44 + (i % 5) * 0.04 : 0.68 + (i % 5) * 0.07,
+        opacity:  isDark ? 0.44 + (i % 4) * 0.14 : 0.62 + (i % 4) * 0.12,
+        height:   heavy ? 24 + (i % 8) * 3 : 16 + (i % 6) * 2,
+        width:    heavy ? 1.5 : 1,
       })),
     [heavy, isDark, count]
   )
 
   const grad = isDark
-    ? 'linear-gradient(to bottom, rgba(147,197,253,0.90), rgba(147,197,253,0))'
-    : 'linear-gradient(to bottom, rgba(30,64,138,0.75), rgba(30,64,138,0))'
+    ? 'linear-gradient(to bottom, rgba(147,197,253,0.92), rgba(147,197,253,0))'
+    : 'linear-gradient(to bottom, rgba(30,64,138,0.80), rgba(30,64,138,0))'
 
   return (
-    <>
+    <div style={{ transform: `skewX(${windAngleDeg}deg)`, position: 'absolute', inset: 0, overflow: 'hidden' }}>
       {drops.map((d) => (
         <motion.div
           key={d.id}
-          className="absolute w-px rounded-full"
-          style={{ left: d.left, top: '-4%', height: d.height, background: grad, opacity: d.opacity }}
-          animate={{ y: '112vh' }}
+          className="absolute rounded-full"
+          style={{
+            left: d.left, top: '-6%',
+            height: d.height, width: d.width,
+            background: grad, opacity: d.opacity,
+          }}
+          animate={{ y: '114vh' }}
           transition={{ duration: d.duration, delay: d.delay, repeat: Infinity, ease: 'linear' }}
         />
       ))}
-    </>
+    </div>
   )
 }
 
