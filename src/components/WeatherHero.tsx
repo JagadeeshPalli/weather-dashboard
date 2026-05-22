@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
 import { MapPin, Thermometer, ArrowUp, ArrowDown, Sunrise, Sunset } from 'lucide-react'
 import type { CurrentWeather } from '../types/weather'
+import { TiltCard } from './TiltCard'
 
 interface WeatherHeroProps {
   data: CurrentWeather
@@ -106,8 +107,8 @@ export function WeatherHero({ data, unit, isDark }: WeatherHeroProps) {
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
-      className="glass-card relative overflow-hidden"
     >
+    <TiltCard className="glass-card relative overflow-hidden" maxTilt={5}>
       {/* Condition-specific gradient accent */}
       <div
         className="absolute inset-0 pointer-events-none rounded-[20px]"
@@ -188,6 +189,7 @@ export function WeatherHero({ data, unit, isDark }: WeatherHeroProps) {
           <p className="font-sans text-dim text-xs text-right">{todayLabel()}</p>
         </div>
       </div>
+    </TiltCard>
     </motion.div>
   )
 }

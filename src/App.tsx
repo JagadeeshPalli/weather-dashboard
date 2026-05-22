@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { KeyRound, ExternalLink, X } from 'lucide-react'
 import { ControlsWidget } from './components/ControlsWidget'
+import { BrandLogo } from './components/BrandLogo'
 import { SearchBar } from './components/SearchBar'
 import { WeatherHero } from './components/WeatherHero'
 import { WeatherDetails } from './components/WeatherDetails'
@@ -156,6 +157,9 @@ function App() {
           }}
         />
       </div>
+
+      {/* ── Brand logo — top left ───────────────────────────────────────── */}
+      <BrandLogo isDark={isDark} />
 
       {/* ── Minimal floating controls (theme + unit) ────────────────────── */}
       <ControlsWidget
