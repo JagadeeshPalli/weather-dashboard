@@ -7,15 +7,17 @@ import { TiltCard } from './TiltCard'
 interface ForecastGridProps {
   items: ForecastItem[]
   unit: 'C' | 'F'
+  onDaySelect?: (date: string) => void
 }
 
 interface DayForecast {
-  dayLabel: string
-  icon: string
+  date:        string   // "YYYY-MM-DD" — used to filter hourly items
+  dayLabel:    string
+  icon:        string
   description: string
-  tempMax: number
-  tempMin: number
-  pop: number
+  tempMax:     number
+  tempMin:     number
+  pop:         number
 }
 
 function groupByDay(items: ForecastItem[]): DayForecast[] {
@@ -39,15 +41,16 @@ function groupByDay(items: ForecastItem[]): DayForecast[] {
     const midday = dayItems.find((i) => i.dt_txt.includes('12:00:00')) ?? dayItems[Math.floor(dayItems.length / 2)]
 
     days.push({
+      date,
       dayLabel: new Date(date + 'T12:00:00Z').toLocaleDateString('en-US', {
         weekday: 'short',
         timeZone: 'UTC',
       }),
-      icon: midday.weather[0].icon,
+      icon:        midday.weather[0].icon,
       description: midday.weather[0].description,
-      tempMax: Math.round(Math.max(...temps)),
-      tempMin: Math.round(Math.min(...temps)),
-      pop: Math.round(Math.max(...pops) * 100),
+      tempMax:     Math.round(Math.max(...temps)),
+      tempMin:     Math.round(Math.min(...temps)),
+      pop:         Math.round(Math.max(...pops) * 100),
     })
   }
 
@@ -55,12 +58,13 @@ function groupByDay(items: ForecastItem[]): DayForecast[] {
 }
 
 interface ForecastCardProps {
-  day: DayForecast
-  unit: 'C' | 'F'
-  index: number
+  day:         DayForecast
+  unit:        'C' | 'F'
+  index:       number
+  onSelect?:   (date: string) => void
 }
 
-const ForecastCard = memo(function ForecastCard({ day, unit, index }: ForecastCardProps) {
+const ForecastCard = memo(function ForecastCard({ day, unit, index, onSelect }: ForecastCardProps) {
   const sym = unit === 'C' ? '°' : '°'
   const iconUrl = `https://openweathermap.org/img/wn/${day.icon}@2x.png`
 
@@ -69,11 +73,16 @@ const ForecastCard = memo(function ForecastCard({ day, unit, index }: ForecastCa
       className="h-full"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      whileTap={{ scale: 0.97 }}
+      whileTap={{ scale: 0.96 }}
       transition={{ delay: index * 0.08, duration: 0.4, ease: 'easeOut' }}
+      onClick={() => onSelect?.(day.date)}
     >
-      {/* h-full + flex-1 ensure all cards stretch to the same row height */}
-      <TiltCard className="glass-card h-full flex flex-col items-center gap-2 text-center">
+      {/* h-full ensures all cards stretch to the same row height */}
+      <TiltCard
+        className={`glass-card h-full flex flex-col items-center gap-2 text-center transition-all${
+          onSelect ? ' cursor-pointer hover:ring-1 hover:ring-[rgba(59,130,246,0.4)]' : ''
+        }`}
+      >
         <p className="font-code text-xs text-dim uppercase tracking-widest">{day.dayLabel}</p>
 
         <img
@@ -107,12 +116,19 @@ const ForecastCard = memo(function ForecastCard({ day, unit, index }: ForecastCa
           <Droplets className="w-3 h-3" />
           {day.pop > 0 ? `${day.pop}%` : '0%'}
         </span>
+
+        {/* Tap hint — only shown when clickable */}
+        {onSelect && (
+          <span className="font-sans text-[9px] text-dim opacity-60 mt-auto">
+            Tap for hours
+          </span>
+        )}
       </TiltCard>
     </motion.div>
   )
 })
 
-export const ForecastGrid = memo(function ForecastGrid({ items, unit }: ForecastGridProps) {
+export const ForecastGrid = memo(function ForecastGrid({ items, unit, onDaySelect }: ForecastGridProps) {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true, margin: '-60px' })
   const days = useMemo(() => groupByDay(items), [items])
@@ -133,14 +149,14 @@ export const ForecastGrid = memo(function ForecastGrid({ items, unit }: Forecast
           On sm+: normal 5-column grid. items-stretch ensures equal heights. */}
       <div className="hidden sm:grid sm:grid-cols-5 gap-3 items-stretch">
         {days.map((day, i) => (
-          <ForecastCard key={day.dayLabel} day={day} unit={unit} index={i} />
+          <ForecastCard key={day.date} day={day} unit={unit} index={i} onSelect={onDaySelect} />
         ))}
       </div>
       {/* Mobile horizontal scroll */}
       <div className="flex sm:hidden gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide">
         {days.map((day, i) => (
-          <div key={day.dayLabel} className="flex-none w-[44vw] snap-start">
-            <ForecastCard day={day} unit={unit} index={i} />
+          <div key={day.date} className="flex-none w-[44vw] snap-start">
+            <ForecastCard day={day} unit={unit} index={i} onSelect={onDaySelect} />
           </div>
         ))}
       </div>
