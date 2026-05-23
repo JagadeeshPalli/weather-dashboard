@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { KeyRound, ExternalLink, X } from 'lucide-react'
+import { KeyRound, ExternalLink, X, Map } from 'lucide-react'
 import { ControlsWidget } from './components/ControlsWidget'
 import { BrandLogo } from './components/BrandLogo'
 import { SearchBar } from './components/SearchBar'
@@ -17,6 +17,10 @@ import type { UnitSystem } from './types/weather'
 
 // Chart.js is large — split into its own chunk so initial load is fast
 const ChartsSection = lazy(() => import('./components/ChartsSection'))
+// Leaflet is large (~165 kB) — split into its own chunk
+const WeatherMap = lazy(() =>
+  import('./components/WeatherMap').then((m) => ({ default: m.WeatherMap }))
+)
 
 function ApiKeyBanner({ onDismiss }: { onDismiss: () => void }) {
   return (
@@ -63,6 +67,7 @@ function App() {
   const [unit, setUnit] = useState<'C' | 'F'>('C')
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [isDark, setIsDark] = useState(() => localStorage.getItem('wx-theme') !== 'light')
+  const [mapOpen, setMapOpen] = useState(false)
   const unitSystem: UnitSystem = unit === 'C' ? 'metric' : 'imperial'
   const { current, forecast, loading, error, load } = useWeatherData(unitSystem)
   const lastCoordsRef = useRef<{ lat: number; lon: number } | null>(null)
@@ -160,6 +165,41 @@ function App() {
 
       {/* ── Brand logo — top left ───────────────────────────────────────── */}
       <BrandLogo isDark={isDark} />
+
+      {/* ── Map trigger — floats above the landscape scene ──────────────── */}
+      <AnimatePresence>
+        {!loading && !error && current && !mapOpen && (
+          <motion.button
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ delay: 0.4, duration: 0.3 }}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.92 }}
+            onClick={() => setMapOpen(true)}
+            className="fixed z-40 flex items-center gap-2 cursor-pointer glass-card px-4 py-2.5"
+            style={{ bottom: 216, right: 20 }}
+            aria-label="Open weather map"
+          >
+            <Map className="w-4 h-4 text-[#3B82F6]" />
+            <span className="font-sans text-sm font-medium text-fg">Map</span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* ── Weather map slide-up panel ───────────────────────────────────── */}
+      {current && (
+        <Suspense fallback={null}>
+          <WeatherMap
+            lat={current.coord.lat}
+            lon={current.coord.lon}
+            cityName={`${current.name}, ${current.sys.country}`}
+            isDark={isDark}
+            isOpen={mapOpen}
+            onClose={() => setMapOpen(false)}
+          />
+        </Suspense>
+      )}
 
       {/* ── Minimal floating controls (theme + unit) ────────────────────── */}
       <ControlsWidget
