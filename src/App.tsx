@@ -189,16 +189,18 @@ function App() {
 
       {/* ── Weather map slide-up panel ───────────────────────────────────── */}
       {current && (
-        <Suspense fallback={null}>
-          <WeatherMap
-            lat={current.coord.lat}
-            lon={current.coord.lon}
-            cityName={`${current.name}, ${current.sys.country}`}
-            isDark={isDark}
-            isOpen={mapOpen}
-            onClose={() => setMapOpen(false)}
-          />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <WeatherMap
+              lat={current.coord.lat}
+              lon={current.coord.lon}
+              cityName={`${current.name}, ${current.sys.country}`}
+              isDark={isDark}
+              isOpen={mapOpen}
+              onClose={() => setMapOpen(false)}
+            />
+          </Suspense>
+        </ErrorBoundary>
       )}
 
       {/* ── Minimal floating controls (theme + unit) ────────────────────── */}
