@@ -1,12 +1,14 @@
 import { memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sun, Moon } from 'lucide-react'
+import { Sun, Moon, Map } from 'lucide-react'
 
 interface ControlsWidgetProps {
   unit: 'C' | 'F'
   onUnitToggle: () => void
   isDark: boolean
   onThemeToggle: () => void
+  /** Pass to show the Map button. Only provided when weather data is loaded. */
+  onMapOpen?: () => void
 }
 
 export const ControlsWidget = memo(function ControlsWidget({
@@ -14,6 +16,7 @@ export const ControlsWidget = memo(function ControlsWidget({
   onUnitToggle,
   isDark,
   onThemeToggle,
+  onMapOpen,
 }: ControlsWidgetProps) {
   return (
     <motion.div
@@ -22,6 +25,26 @@ export const ControlsWidget = memo(function ControlsWidget({
       transition={{ delay: 0.25, type: 'spring', stiffness: 200, damping: 22 }}
       className="fixed top-5 right-5 z-50 flex items-center gap-2"
     >
+      {/* Map button — only visible when weather data is loaded */}
+      <AnimatePresence>
+        {onMapOpen && (
+          <motion.button
+            key="map-btn"
+            initial={{ opacity: 0, scale: 0.7 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.7 }}
+            transition={{ duration: 0.2 }}
+            onClick={onMapOpen}
+            whileHover={{ scale: 1.12 }}
+            whileTap={{ scale: 0.88 }}
+            aria-label="Open weather map"
+            className="glass w-10 h-10 flex items-center justify-center rounded-2xl cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#3B82F6]"
+          >
+            <Map className="w-4 h-4 text-[#3B82F6]" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* Theme toggle */}
       <motion.button
         onClick={onThemeToggle}

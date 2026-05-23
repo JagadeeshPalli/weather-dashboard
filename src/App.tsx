@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { KeyRound, ExternalLink, X, Map } from 'lucide-react'
+import { KeyRound, ExternalLink, X } from 'lucide-react'
 import { ControlsWidget } from './components/ControlsWidget'
 import { BrandLogo } from './components/BrandLogo'
 import { SearchBar } from './components/SearchBar'
@@ -169,28 +169,7 @@ function App() {
       {/* ── Brand logo — top left ───────────────────────────────────────── */}
       <BrandLogo isDark={isDark} />
 
-      {/* ── Map trigger — floats above the landscape scene ──────────────── */}
-      <AnimatePresence>
-        {!loading && !error && current && !mapOpen && (
-          <motion.button
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            transition={{ delay: 0.4, duration: 0.3 }}
-            whileHover={{ scale: 1.06 }}
-            whileTap={{ scale: 0.92 }}
-            onClick={() => setMapOpen(true)}
-            className="fixed z-40 flex items-center gap-2 cursor-pointer glass-card px-4 py-2.5"
-            style={{ bottom: 216, right: 20 }}
-            aria-label="Open weather map"
-          >
-            <Map className="w-4 h-4 text-[#3B82F6]" />
-            <span className="font-sans text-sm font-medium text-fg">Map</span>
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      {/* ── Weather map slide-up panel ───────────────────────────────────── */}
+      {/* ── Weather map floating window ──────────────────────────────────── */}
       {current && (
         <ErrorBoundary>
           <Suspense fallback={null}>
@@ -206,12 +185,13 @@ function App() {
         </ErrorBoundary>
       )}
 
-      {/* ── Minimal floating controls (theme + unit) ────────────────────── */}
+      {/* ── Minimal floating controls (theme + unit + map) ──────────────── */}
       <ControlsWidget
         unit={unit}
         onUnitToggle={() => setUnit((u) => (u === 'C' ? 'F' : 'C'))}
         isDark={isDark}
         onThemeToggle={handleThemeToggle}
+        onMapOpen={(!loading && !error && current) ? () => setMapOpen(true) : undefined}
       />
 
       <ErrorBoundary>
