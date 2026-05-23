@@ -6,6 +6,7 @@ import { BrandLogo } from './components/BrandLogo'
 import { SearchBar } from './components/SearchBar'
 import { WeatherHero } from './components/WeatherHero'
 import { WeatherDetails } from './components/WeatherDetails'
+import { AirQualityCard } from './components/AirQualityCard'
 import { SkeletonHero, SkeletonDetails } from './components/SkeletonCard'
 import { ErrorState } from './components/ErrorState'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -247,6 +248,7 @@ function App() {
                   >
                     <WeatherHero data={current} unit={unit} isDark={isDark} />
                     <WeatherDetails data={current} unit={unit} />
+                    <AirQualityCard lat={current.coord.lat} lon={current.coord.lon} isDark={isDark} />
                     {forecast && (
                       <Suspense
                         fallback={
