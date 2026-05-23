@@ -66,12 +66,14 @@ const ForecastCard = memo(function ForecastCard({ day, unit, index }: ForecastCa
 
   return (
     <motion.div
+      className="h-full"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileTap={{ scale: 0.97 }}
       transition={{ delay: index * 0.08, duration: 0.4, ease: 'easeOut' }}
     >
-      <TiltCard className="glass-card flex flex-col items-center gap-2 text-center">
+      {/* h-full + flex-1 ensure all cards stretch to the same row height */}
+      <TiltCard className="glass-card h-full flex flex-col items-center gap-2 text-center">
         <p className="font-code text-xs text-dim uppercase tracking-widest">{day.dayLabel}</p>
 
         <img
@@ -81,11 +83,11 @@ const ForecastCard = memo(function ForecastCard({ day, unit, index }: ForecastCa
           loading="lazy"
         />
 
-        <p className="font-sans text-[10px] text-dim capitalize leading-tight">
+        <p className="font-sans text-[10px] text-dim capitalize leading-tight min-h-[2.4em]">
           {day.description}
         </p>
 
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-auto">
           <span className="flex items-center gap-0.5 font-code text-sm font-semibold text-fg">
             <ArrowUp className="w-3 h-3 text-[#3B82F6]" />
             {day.tempMax}{sym}
@@ -96,12 +98,15 @@ const ForecastCard = memo(function ForecastCard({ day, unit, index }: ForecastCa
           </span>
         </div>
 
-        {day.pop > 0 && (
-          <span className="flex items-center gap-0.5 font-code text-[10px] text-[#3B82F6]">
-            <Droplets className="w-3 h-3" />
-            {day.pop}%
-          </span>
-        )}
+        {/* Always render — keeps card height uniform. Hidden when no rain. */}
+        <span
+          className="flex items-center gap-0.5 font-code text-[10px]"
+          style={{ color: day.pop > 0 ? '#3B82F6' : 'transparent' }}
+          aria-hidden={day.pop === 0}
+        >
+          <Droplets className="w-3 h-3" />
+          {day.pop > 0 ? `${day.pop}%` : '0%'}
+        </span>
       </TiltCard>
     </motion.div>
   )
@@ -124,9 +129,19 @@ export const ForecastGrid = memo(function ForecastGrid({ items, unit }: Forecast
       <p className="font-sans text-xs text-dim uppercase tracking-widest mb-3 px-1">
         5-Day Forecast
       </p>
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      {/* On mobile: horizontal scroll so all 5 cards stay the same width.
+          On sm+: normal 5-column grid. items-stretch ensures equal heights. */}
+      <div className="hidden sm:grid sm:grid-cols-5 gap-3 items-stretch">
         {days.map((day, i) => (
           <ForecastCard key={day.dayLabel} day={day} unit={unit} index={i} />
+        ))}
+      </div>
+      {/* Mobile horizontal scroll */}
+      <div className="flex sm:hidden gap-3 overflow-x-auto pb-1 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide">
+        {days.map((day, i) => (
+          <div key={day.dayLabel} className="flex-none w-[44vw] snap-start">
+            <ForecastCard day={day} unit={unit} index={i} />
+          </div>
         ))}
       </div>
     </motion.div>
