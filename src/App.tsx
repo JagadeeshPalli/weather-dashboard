@@ -132,7 +132,8 @@ function App() {
             background: isDark
               ? 'radial-gradient(circle at 40% 40%, rgba(37,99,235,0.72) 0%, transparent 65%)'
               : 'radial-gradient(circle at 40% 40%, rgba(29,78,216,0.62) 0%, transparent 65%)',
-            filter: 'blur(72px)',
+            filter: 'blur(48px)',
+            willChange: 'transform',
           }}
         />
         {/* Bottom-right — purple */}
@@ -144,8 +145,9 @@ function App() {
             background: isDark
               ? 'radial-gradient(circle at 60% 60%, rgba(139,92,246,0.68) 0%, transparent 65%)'
               : 'radial-gradient(circle at 60% 60%, rgba(124,58,237,0.58) 0%, transparent 65%)',
-            filter: 'blur(72px)',
+            filter: 'blur(48px)',
             animationDelay: '2s',
+            willChange: 'transform',
           }}
         />
         {/* Centre — sky / teal */}
@@ -157,8 +159,9 @@ function App() {
             background: isDark
               ? 'radial-gradient(circle at 50% 50%, rgba(6,182,212,0.52) 0%, transparent 65%)'
               : 'radial-gradient(circle at 50% 50%, rgba(251,191,36,0.42) 0%, transparent 65%)',
-            filter: 'blur(72px)',
+            filter: 'blur(48px)',
             animationDelay: '4s',
+            willChange: 'transform',
           }}
         />
       </div>

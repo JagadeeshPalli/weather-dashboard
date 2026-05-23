@@ -143,6 +143,47 @@ html.light .glass-card:hover {
   border-color: rgba(255, 255, 255, 0.95);
 }
 
+/* ─── Particle animation keyframes (run on GPU compositor, zero JS/frame) ── */
+/* Rain: single axis fall */
+@keyframes wx-rain-fall {
+  to { transform: translateY(122vh); }
+}
+/* Snow: 4 sway-pattern variants */
+@keyframes wx-snow-0 {
+  0%   { transform: translateY(-3%) translateX(0);     }
+  33%  { transform: translateY(38vh) translateX(18px);  }
+  66%  { transform: translateY(76vh) translateX(-12px); }
+  100% { transform: translateY(116vh) translateX(0);   }
+}
+@keyframes wx-snow-1 {
+  0%   { transform: translateY(-3%) translateX(0);     }
+  33%  { transform: translateY(38vh) translateX(-16px); }
+  66%  { transform: translateY(76vh) translateX(24px);  }
+  100% { transform: translateY(116vh) translateX(0);   }
+}
+@keyframes wx-snow-2 {
+  0%   { transform: translateY(-3%) translateX(0);    }
+  33%  { transform: translateY(38vh) translateX(9px);  }
+  66%  { transform: translateY(76vh) translateX(-6px); }
+  100% { transform: translateY(116vh) translateX(0);  }
+}
+@keyframes wx-snow-3 {
+  0%   { transform: translateY(-3%) translateX(0);     }
+  33%  { transform: translateY(38vh) translateX(-22px); }
+  66%  { transform: translateY(76vh) translateX(14px);  }
+  100% { transform: translateY(116vh) translateX(0);   }
+}
+/* Stars: twinkle using per-element CSS custom properties */
+@keyframes wx-twinkle {
+  0%, 100% { opacity: var(--wx-hi, 0.5);  }
+  50%       { opacity: var(--wx-lo, 0.07); }
+}
+/* Grass: sway using per-element CSS custom property for lean angle */
+@keyframes wx-grass {
+  0%, 100% { transform: rotate(0deg);            }
+  50%       { transform: rotate(var(--wx-lean, 8deg)); }
+}
+
 /* ─── Reduced motion ────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *,

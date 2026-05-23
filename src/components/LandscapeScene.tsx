@@ -457,33 +457,33 @@ function ThunderFlash({ isDark }: { isDark: boolean }) {
   )
 }
 
-/* ─── Foreground grass blades ────────────────────────────────────────────── */
+/* ─── Foreground grass blades — CSS animation, 0 JS per frame ───────────── */
 function ForegroundGrass({ isDark }: { isDark: boolean }) {
   const col = isDark ? 'rgba(8,16,36,0.80)' : 'rgba(16,80,38,0.68)'
   const blades = useMemo(
-    () => Array.from({ length: 30 }, (_, i) => ({
-      x: `${1 + (i / 30) * 98}%`,
-      h: 14 + (i % 5) * 4,
-      delay: (i * 0.17) % 2.8,
-      dur: 2.2 + (i % 5) * 0.45,
-      lean: (i % 2 === 0 ? 1 : -1) * (7 + (i % 3) * 5),
+    () => Array.from({ length: 16 }, (_, i) => ({
+      x:     `${1 + (i / 16) * 98}%`,
+      h:     14 + (i % 5) * 4,
+      delay: `${(i * 0.22) % 2.8}s`,
+      dur:   `${2.2 + (i % 5) * 0.45}s`,
+      lean:  `${(i % 2 === 0 ? 1 : -1) * (7 + (i % 3) * 5)}deg`,
     })),
     [],
   )
   return (
     <>
       {blades.map((b, i) => (
-        <motion.div
+        <div
           key={i}
           style={{
             position: 'absolute', left: b.x, bottom: 2,
             width: 3, height: b.h,
-            background: `linear-gradient(to top, ${col}, transparent)`,
+            background: `linear-gradient(to top,${col},transparent)`,
             borderRadius: '2px 2px 0 0',
             transformOrigin: 'bottom center',
-          }}
-          animate={{ rotate: [0, b.lean, 0] }}
-          transition={{ duration: b.dur, delay: b.delay, repeat: Infinity, ease: 'easeInOut' }}
+            '--wx-lean': b.lean,
+            animation: `wx-grass ${b.dur} ${b.delay} ease-in-out infinite`,
+          } as React.CSSProperties}
         />
       ))}
     </>
@@ -530,13 +530,13 @@ function ChimneySmoke({ isDark }: { isDark: boolean }) {
 }
 
 /* ─── Fireflies (clear dark mode) ──────────────────────────────────────── */
-const FIREFLIES = Array.from({ length: 14 }, (_, i) => ({
-  left:   `${8  + (i * 137.508) % 84}%`,
-  top:    `${30 + (i * 63.2)    % 52}%`,
-  delay:  (i * 0.62) % 5.8,
-  dur:    1.9 + (i % 5) * 0.55,
-  dx:     (i % 2 === 0 ? 1 : -1) * (14 + (i % 3) * 9),
-  dy:     -7 - (i % 4) * 5,
+const FIREFLIES = Array.from({ length: 10 }, (_, i) => ({
+  left:  `${8  + (i * 137.508) % 84}%`,
+  top:   `${30 + (i * 63.2)    % 52}%`,
+  delay: (i * 0.62) % 5.8,
+  dur:   1.9 + (i % 5) * 0.55,
+  dx:    (i % 2 === 0 ? 1 : -1) * (14 + (i % 3) * 9),
+  dy:    -7 - (i % 4) * 5,
 }))
 
 function Fireflies({ isDark }: { isDark: boolean }) {
@@ -551,6 +551,7 @@ function Fireflies({ isDark }: { isDark: boolean }) {
             width: 3, height: 3, borderRadius: '50%',
             background: 'rgba(253,224,71,0.92)',
             boxShadow: '0 0 7px rgba(253,224,71,0.75)',
+            willChange: 'transform, opacity',
           }}
           animate={{ opacity: [0, 1, 0], x: [0, f.dx], y: [0, f.dy] }}
           transition={{ duration: f.dur, delay: f.delay, repeat: Infinity, ease: 'easeInOut' }}
