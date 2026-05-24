@@ -40,7 +40,7 @@ export const HourlyChart = memo(function HourlyChart({ items, unit, isDark = tru
   const inView = useInView(ref, { once: true, margin: '-60px' })
 
   const sym = unit === 'C' ? '°C' : '°F'
-  const slice = items.slice(0, 8)
+  const slice = items.slice(0, 16)
   const labels = slice.map((it) => formatHour(it.dt_txt))
   const temps = slice.map((it) => Math.round(it.main.temp))
 
@@ -124,7 +124,7 @@ export const HourlyChart = memo(function HourlyChart({ items, unit, isDark = tru
       className="glass-card"
     >
       <p className="font-sans text-xs text-dim uppercase tracking-widest mb-4">
-        Next 24 Hours
+        Next 48 Hours
       </p>
       <div style={{ height: 200 }}>
         <Line ref={chartRef} data={data} options={options} />
