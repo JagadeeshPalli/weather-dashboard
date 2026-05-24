@@ -7,6 +7,8 @@ import { SearchBar } from './components/SearchBar'
 import { WeatherHero } from './components/WeatherHero'
 import { WeatherDetails } from './components/WeatherDetails'
 import { AirQualityCard } from './components/AirQualityCard'
+import { CitySwitcher } from './components/CitySwitcher'
+import { useSavedCities } from './hooks/useSavedCities'
 import { SkeletonHero, SkeletonDetails } from './components/SkeletonCard'
 import { ErrorState } from './components/ErrorState'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -69,9 +71,11 @@ function App() {
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [isDark, setIsDark] = useState(() => localStorage.getItem('wx-theme') !== 'light')
   const [mapOpen, setMapOpen] = useState(false)
+  const [citiesOpen, setCitiesOpen] = useState(false)
   const unitSystem: UnitSystem = unit === 'C' ? 'metric' : 'imperial'
   const { current, forecast, loading, error, load } = useWeatherData(unitSystem)
   const lastCoordsRef = useRef<{ lat: number; lon: number } | null>(null)
+  const { cities, addCity, removeCity, updateSnap } = useSavedCities()
 
   const showBanner = !hasApiKey() && !bannerDismissed
 
@@ -87,11 +91,14 @@ function App() {
   const handleThemeToggle = useCallback(() => setIsDark((d) => !d), [])
 
   const handleLocationSelect = useCallback(
-    (lat: number, lon: number, _cityName: string) => {
+    (lat: number, lon: number, cityName: string) => {
       lastCoordsRef.current = { lat, lon }
       load(lat, lon)
+      // Auto-save to city list — name/country filled once current loads (see effect below)
+      // We optimistically add with what we have; the effect patches country from current
+      addCity({ lat, lon, name: cityName, country: '' })
     },
-    [load]
+    [load, addCity]
   )
 
   useEffect(() => {
@@ -99,6 +106,19 @@ function App() {
       load(lastCoordsRef.current.lat, lastCoordsRef.current.lon)
     }
   }, [load])
+
+  // When weather loads for the active city: patch country + update weather snap
+  useEffect(() => {
+    if (!current || !lastCoordsRef.current) return
+    const { lat, lon } = lastCoordsRef.current
+    // Re-add with correct country (city name from current.name, country from current.sys.country)
+    addCity({ lat, lon, name: current.name, country: current.sys.country })
+    updateSnap(lat, lon, {
+      temp: current.main.temp,
+      icon: current.weather[0].icon,
+      unit,
+    })
+  }, [current, unit, addCity, updateSnap])
 
   return (
     <div
@@ -170,6 +190,21 @@ function App() {
       {/* ── Brand logo — top left ───────────────────────────────────────── */}
       <BrandLogo isDark={isDark} />
 
+      {/* ── City switcher drawer ─────────────────────────────────────────── */}
+      <CitySwitcher
+        isOpen={citiesOpen}
+        onClose={() => setCitiesOpen(false)}
+        cities={cities}
+        activeCoords={lastCoordsRef.current}
+        unit={unit}
+        isDark={isDark}
+        onSelect={(lat, lon, _name) => {
+          lastCoordsRef.current = { lat, lon }
+          load(lat, lon)
+        }}
+        onRemove={removeCity}
+      />
+
       {/* ── Weather map floating window ──────────────────────────────────── */}
       {current && (
         <ErrorBoundary>
@@ -193,6 +228,8 @@ function App() {
         isDark={isDark}
         onThemeToggle={handleThemeToggle}
         onMapOpen={(!loading && !error && current) ? () => setMapOpen(true) : undefined}
+        onCitiesOpen={(!loading && !error && current) ? () => setCitiesOpen(true) : undefined}
+        citiesCount={cities.length}
       />
 
       <ErrorBoundary>

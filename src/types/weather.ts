@@ -83,6 +83,18 @@ export interface GeoCity {
   state?: string
 }
 
+/* ── Saved cities ─────────────────────────────────────────────────────────── */
+export interface SavedCity {
+  id:      string    // `${lat.toFixed(3)}_${lon.toFixed(3)}`
+  lat:     number
+  lon:     number
+  name:    string
+  country: string
+  /** Last-known weather snapshot (updated whenever this city is the active view) */
+  snap?:   { temp: number; icon: string; unit: 'C' | 'F' }
+  addedAt: number    // Date.now() — used to trim oldest when over max
+}
+
 /* ── Air Quality ──────────────────────────────────────────────────────────── */
 export interface AirQualityComponents {
   co:    number   // µg/m³
