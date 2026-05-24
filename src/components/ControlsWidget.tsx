@@ -29,7 +29,7 @@ export const ControlsWidget = memo(function ControlsWidget({
       initial={{ opacity: 0, scale: 0.85, y: -8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ delay: 0.25, type: 'spring', stiffness: 200, damping: 22 }}
-      className="fixed top-5 right-5 z-50 flex items-center gap-2"
+      className="fixed top-5 right-5 z-50 flex items-center gap-1.5 sm:gap-2"
     >
       {/* Cities button — only visible when weather data is loaded */}
       <AnimatePresence>

@@ -69,8 +69,8 @@ export function BrandLogo({ isDark }: BrandLogoProps) {
           </motion.div>
         </div>
 
-        {/* Text */}
-        <div className="flex flex-col leading-none gap-0.5">
+        {/* Text — hidden on mobile to prevent overlap with ControlsWidget */}
+        <div className="hidden sm:flex flex-col leading-none gap-0.5">
           <span className="font-sans text-sm font-bold text-fg tracking-tight whitespace-nowrap">
             WeatherWave
           </span>

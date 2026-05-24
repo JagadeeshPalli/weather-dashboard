@@ -233,7 +233,7 @@ function App() {
       />
 
       <ErrorBoundary>
-        <main className="relative z-10 pt-10 px-4 pb-56 max-w-4xl mx-auto">
+        <main className="relative z-10 pt-20 sm:pt-10 px-4 pb-56 max-w-4xl mx-auto">
           <div className="flex flex-col items-center gap-5">
 
             {/* Search */}

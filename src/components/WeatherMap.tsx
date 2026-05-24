@@ -180,8 +180,8 @@ export function WeatherMap({ lat, lon, cityName, isDark, isOpen, onClose }: Weat
       <motion.div
         className="relative flex flex-col overflow-hidden"
         style={{
-          width:        'min(92vw, 940px)',
-          height:       'min(82vh, 700px)',
+          width:        'min(96vw, 940px)',
+          height:       'min(92vh, 700px)',
           borderRadius: 24,
           background:   windowBg,
           border:       `1px solid ${borderCol}`,
@@ -197,7 +197,7 @@ export function WeatherMap({ lat, lon, cityName, isDark, isOpen, onClose }: Weat
 
         {/* ── Window title bar ──────────────────────────────────────── */}
         <div
-          className="shrink-0 flex items-center justify-between gap-3 px-5 py-3.5"
+          className="shrink-0 flex items-center justify-between gap-3 px-3 sm:px-5 py-2.5 sm:py-3.5"
           style={{
             background:   headerBg,
             borderBottom: `1px solid ${borderCol}`,
@@ -248,7 +248,7 @@ export function WeatherMap({ lat, lon, cityName, isDark, isOpen, onClose }: Weat
 
         {/* ── Layer selector + legend ───────────────────────────────── */}
         <div
-          className="shrink-0 flex flex-col gap-2.5 px-5 py-3"
+          className="shrink-0 flex flex-col gap-2 sm:gap-2.5 px-3 sm:px-5 py-2 sm:py-3"
           style={{ borderBottom: `1px solid ${borderCol}`, background: headerBg }}
         >
           {/* Layer tabs */}
@@ -288,11 +288,11 @@ export function WeatherMap({ lat, lon, cityName, isDark, isOpen, onClose }: Weat
               {active.description}
             </p>
             <div className="flex items-center gap-2.5">
-              <span className="font-sans text-[10px] text-dim shrink-0 w-14 text-right">
+              <span className="font-sans text-[10px] text-dim shrink-0 w-10 sm:w-14 text-right">
                 {active.legendMin}
               </span>
               <div className="flex-1 h-2 rounded-full" style={{ background: active.legendGrad }} />
-              <span className="font-sans text-[10px] text-dim shrink-0 w-14">
+              <span className="font-sans text-[10px] text-dim shrink-0 w-10 sm:w-14">
                 {active.legendMax}
               </span>
             </div>
