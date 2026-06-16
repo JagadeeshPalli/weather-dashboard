@@ -44,5 +44,9 @@ BOOTSTRAP.md
 start-ai.bat
 design-system/
 
+# Kilo auto-memory skills (internal only)
+.kilo/skill/memory/
+.kilo/skill/auto-memory/
+
 # TypeScript
 *.tsbuildinfo
