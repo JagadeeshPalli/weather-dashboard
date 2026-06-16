@@ -154,7 +154,7 @@ export function AirQualityCard({ lat, lon, isDark: _isDark }: AirQualityCardProp
     <motion.div
       ref={ref}
       initial={{ opacity: 0, y: 20 }}
-      animate={inView ? { opacity: 1, y: 0 } : {}}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
     >
       <TiltCard className="glass-card">
